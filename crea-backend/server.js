@@ -19,10 +19,11 @@ function isValidUrl(raw) {
   }
 }
 
-// Prépare les arguments communs pour yt-dlp (moteur JS Node + cookies Render/local)
+// Prépare les arguments communs pour yt-dlp (moteur JS Node + solver EJS + cookies Render/local)
 function getBaseYtDlpArgs() {
   const args = [
     '--js-runtimes', 'node',
+    '--remote-components', 'ejs:github',
     '--extractor-args', 'youtube:player_client=tv,web',
   ];
 
