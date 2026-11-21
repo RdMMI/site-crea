@@ -21,7 +21,10 @@ function isValidUrl(raw) {
 
 // Prépare les arguments communs pour yt-dlp (moteur JS Node + cookies Render/local)
 function getBaseYtDlpArgs() {
-  const args = ['--js-runtimes', 'node'];
+  const args = [
+    '--js-runtimes', 'node',
+    '--extractor-args', 'youtube:player_client=tv,web',
+  ];
 
   const renderSecret = '/etc/secrets/cookies.txt';
   const localCookies = path.join(__dirname, 'cookies.txt');
@@ -56,6 +59,7 @@ app.get('/api/info', (req, res) => {
     '--dump-single-json',
     '--no-warnings',
     '--no-playlist',
+    '--ignore-no-formats-error',
     url,
   ]);
 
@@ -106,8 +110,8 @@ app.get('/api/download', (req, res) => {
   } else {
     const allowedQ = ['1080', '720', '480'];
     const selector = allowedQ.includes(quality)
-      ? `bestvideo[height<=${quality}][ext=mp4]+bestaudio[ext=m4a]/best[height<=${quality}][ext=mp4]/best`
-      : 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best';
+      ? `bv*[height<=${quality}]+ba/b[height<=${quality}]/bv*+ba/b`
+      : 'bv*+ba/b';
 
     args = [
       '-f', selector,
