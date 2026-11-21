@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pipette Image</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FFFFFF;--ink:#000000;--acc:#D4FF00;color-scheme:light;box-sizing:border-box}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font:400 14px/1.4 "Bricolage Grotesque",system-ui,sans-serif;display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:16px;padding:16px;height:100vh}
+main{display:flex;flex-direction:column;gap:12px;padding:0;min-width:0;min-height:0;height:100%;overflow:hidden}
+header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;flex-shrink:0}
+h1{font-size:28px;line-height:1;font-weight:800;margin:0;letter-spacing:-.02em}
+header span{color:var(--ink);opacity:.6;font-size:14px}
+h2{font-size:15px;font-weight:800;margin:0 0 4px}
+p{margin:0}
+.stage{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid var(--ink);overflow:hidden;padding:12px;background:var(--bg)}
+.view{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:grab}
+.view:active{cursor:grabbing}
+canvas{display:none;width:100%;height:100%;touch-action:none;user-select:none;-webkit-touch-callout:none;border:2px solid var(--ink);background:var(--bg)}
+.view.has canvas{display:block}
+#drop{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;cursor:pointer;background:var(--bg);outline:2px dashed var(--ink);outline-offset:-14px;padding:30px}
+#drop strong{font-size:24px;font-weight:800}
+.view.has #drop{display:none}
+.view.has.over #drop{display:flex;background:var(--acc)}
+.over #drop{background:var(--acc)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0}
+button,select,input[type=text]{font:inherit;color:var(--ink);border:2px solid var(--ink);border-radius:0;padding:8px 12px;background:var(--bg)}
+button{background:var(--acc);font-weight:600;cursor:pointer}
+button:hover,button.pri{background:var(--ink);color:var(--acc)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button:disabled:hover{background:var(--acc);color:var(--ink)}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+aside.panel{border:2px solid var(--ink);display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg);padding:16px;height:100%;overflow-y:auto;scrollbar-width:none;gap:16px}
+aside.panel::-webkit-scrollbar{display:none}
+.color-preview{width:100%;height:90px;border:2px solid var(--ink);background:#FFFFFF;transition:background .1s}
+.row{display:grid;grid-template-columns:60px 1fr;gap:8px;align-items:center;margin-top:4px}
+.row label{color:var(--ink);font-size:14px;font-weight:600}
+.row input{width:100%;text-align:left;font-family:ui-monospace,Menlo,monospace;text-transform:uppercase;cursor:pointer}
+.row input:hover{background:var(--acc);color:var(--ink)}
+small{color:var(--ink);opacity:.7;font-size:12px;display:block}
+#toast{position:fixed;bottom:20px;right:20px;background:var(--ink);color:var(--acc);padding:8px 16px;font-weight:600;border:2px solid var(--ink);display:none;z-index:1000}
+@media(max-width:860px){body{grid-template-columns:1fr;overflow:auto;height:auto;padding:12px}main{height:auto;overflow:visible}aside.panel{border:2px solid var(--ink);height:auto;overflow:visible}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>Pipette Image</h1><span>Zoomez et cliquez pour inspecter les pixels.</span></header>
+<section class="stage">
+  <div class="view" id="view">
+    <div id="drop" tabindex="0" role="button" aria-label="Choisir une image">
+      <strong>Glissez une image ici</strong>
+      <span>ou cliquez pour choisir (ou coller avec Ctrl+V)</span>
+    </div>
+    <canvas id="out" hidden></canvas>
+  </div>
+  <div class="bar">
+    <button id="pick">Choisir une image</button>
+    <button id="reset" disabled>Réinitialiser</button>
+    <button id="zoom-in" disabled>+</button>
+    <button id="zoom-out" disabled>-</button>
+    <button id="zoom-reset" disabled>1:1</button>
+  </div>
+  <small id="hint">Molette pour zoomer, clic maintenu pour glisser, clic simple pour prélever une couleur.</small>
+  <input type="file" id="file" accept="image/*" hidden>
+</section>
+</main>
+
+<aside class="panel">
+  <h2>Couleur sélectionnée</h2>
+  <div class="color-preview" id="preview"></div>
+  <div class="row">
+    <label>HEX</label>
+    <input type="text" id="val-hex" value="#FFFFFF" readonly title="Cliquer pour copier">
+  </div>
+  <div class="row">
+    <label>RGB</label>
+    <input type="text" id="val-rgb" value="rgb(255, 255, 255)" readonly title="Cliquer pour copier">
+  </div>
+  <div class="row">
+    <label>HSL</label>
+    <input type="text" id="val-hsl" value="hsl(0, 0%, 100%)" readonly title="Cliquer pour copier">
+  </div>
+  <button id="toggle-pipette" style="margin-top:auto">Désactiver la pipette système</button>
+</aside>
+
+<div id="toast">Copié dans le presse-papier !</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let img=null,W=0,H=0,systemPipetteActive=true;
+let zoom=1, panX=0, panY=0;
+let isDragging=false, startX=0, startY=0, hasMoved=false;
+
+const out=$('out'),ctx=out.getContext('2d',{willReadFrequently:true});
+const offCanvas=document.createElement('canvas');
+const offCtx=offCanvas.getContext('2d',{willReadFrequently:true});
+
+function showToast(msg){
+  const t=$('toast');
+  t.textContent=msg;
+  t.style.display='block';
+  setTimeout(()=>t.style.display='none',1500);
+}
+
+function load(file){
+  if(!file||!file.type.startsWith('image/'))return;
+  const url=URL.createObjectURL(file),im=new Image();
+  im.onload=()=>{
+    W=im.naturalWidth; H=im.naturalHeight;
+    offCanvas.width=W; offCanvas.height=H;
+    offCtx.drawImage(im,0,0);
+    
+    const view = $('view');
+    out.width = view.clientWidth;
+    out.height = view.clientHeight;
+    
+    const maxW = view.clientWidth - 24;
+    const maxH = view.clientHeight - 24;
+    zoom = Math.min(maxW / W, maxH / H, 1);
+    panX = (view.clientWidth - W * zoom) / 2;
+    panY = (view.clientHeight - H * zoom) / 2;
+
+    img=im; URL.revokeObjectURL(url);
+    $('drop').hidden=true; out.hidden=false;
+    $('reset').disabled=false;
+    $('zoom-in').disabled=false;
+    $('zoom-out').disabled=false;
+    $('zoom-reset').disabled=false;
+    $('view').classList.add('has');
+    redraw();
+  };
+  im.src=url;
+}
+
+function redraw(){
+  if(!img)return;
+  ctx.clearRect(0,0,out.width,out.height);
+  ctx.save();
+  ctx.imageSmoothingEnabled = zoom < 4;
+  ctx.translate(panX, panY);
+  ctx.scale(zoom, zoom);
+  ctx.drawImage(offCanvas, 0, 0);
+  ctx.restore();
+}
+
+$('pick').onclick=$('drop').onclick=()=>$('file').click();
+$('file').onchange=e=>load(e.target.files[0]);
+const dz=$('view');
+['dragenter','dragover'].forEach(t=>dz.addEventListener(t,e=>{e.preventDefault();dz.classList.add('over')}));
+['dragleave','drop'].forEach(t=>dz.addEventListener(t,e=>{e.preventDefault();dz.classList.remove('over')}));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])load(e.dataTransfer.files[0])});
+window.addEventListener('paste',e=>{const f=[...e.clipboardData.files][0];if(f)load(f)});
+
+window.addEventListener('resize', () => {
+  if(!img)return;
+  const view = $('view');
+  out.width = view.clientWidth;
+  out.height = view.clientHeight;
+  redraw();
+});
+
+$('reset').onclick=()=>{
+  ctx.clearRect(0,0,out.width,out.height);
+  img=null;out.hidden=true;$('drop').hidden=false;
+  $('reset').disabled=true;
+  $('zoom-in').disabled=true;
+  $('zoom-out').disabled=true;
+  $('zoom-reset').disabled=true;
+  $('view').classList.remove('has');
+  updateColor(255,255,255);
+};
+
+dz.addEventListener('wheel', e => {
+  if(!img)return;
+  e.preventDefault();
+  const rect = out.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+  const newZoom = Math.max(0.1, Math.min(50, zoom * zoomFactor));
+
+  panX = mouseX - (mouseX - panX) * (newZoom / zoom);
+  panY = mouseY - (mouseY - panY) * (newZoom / zoom);
+  zoom = newZoom;
+  redraw();
+},{passive:false});
+
+dz.addEventListener('mousedown', e => {
+  if(!img)return;
+  isStagingDrag = true;
+  startX = e.clientX - panX;
+  startY = e.clientY - panY;
+  hasMoved = false;
+});
+
+window.addEventListener('mousemove', e => {
+  if(!isStagingDrag || !img)return;
+  const dx = Math.abs(e.clientX - (startX + panX));
+  const dy = Math.abs(e.clientY - (startY + panY));
+  if(dx > 2 || dy > 2) hasMoved = true;
+  panX = e.clientX - startX;
+  panY = e.clientY - startY;
+  redraw();
+});
+
+window.addEventListener('mouseup', () => {
+  isStagingDrag = false;
+});
+
+let isStagingDrag = false;
+
+$('zoom-in').onclick = () => { zoom = Math.min(50, zoom * 1.3); redraw(); };
+$('zoom-out').onclick = () => { zoom = Math.max(0.1, zoom / 1.3); redraw(); };
+$('zoom-reset').onclick = () => {
+  if(!img)return;
+  const view = $('view');
+  zoom = Math.min((view.clientWidth - 24) / W, (view.clientHeight - 24) / H, 1);
+  panX = (view.clientWidth - W * zoom) / 2;
+  panY = (view.clientHeight - H * zoom) / 2;
+  redraw();
+};
+
+function rgbToHex(r,g,b){
+  return "#" + [r,g,b].map(x=>{
+    const hex=x.toString(16);
+    return hex.length===1?"0"+hex:hex;
+  }).join('').toUpperCase();
+}
+
+function rgbToHsl(r,g,b){
+  r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
+  let h, s, l=(max+min)/2;
+  if(max===min){
+    h=s=0;
+  }else{
+    const d=max-min;
+    s=l>0.5?d/(2-max-min):d/(max+min);
+    switch(max){
+      case r: h=(g-b)/d+(g<b?6:0); break;
+      case g: h=(b-r)/d+2; break;
+      case b: h=(r-g)/d+4; break;
+    }
+    h/=6;
+  }
+  return `hsl(${Math.round(h*360)}, ${Math.round(s*100)}%, ${Math.round(l*100)}%)`;
+}
+
+function updateColor(r,g,b){
+  const hex=rgbToHex(r,g,b);
+  const rgb=`rgb(${r}, ${g}, ${b})`;
+  const hsl=rgbToHsl(r,g,b);
+  $('preview').style.background=hex;
+  $('val-hex').value=hex;
+  $('val-rgb').value=rgb;
+  $('val-hsl').value=hsl;
+}
+
+['val-hex', 'val-rgb', 'val-hsl'].forEach(id=>{
+  $(id).onclick = () => {
+    navigator.clipboard.writeText($(id).value);
+    showToast(`Copié : ${$(id).value}`);
+  };
+});
+
+out.onclick=async e=>{
+  if(!img || hasMoved)return;
+  if(systemPipetteActive && window.EyeDropper){
+    try{
+      const dropper=new EyeDropper();
+      const result=await dropper.open();
+      const hex=result.sRGBHex;
+      const r=parseInt(hex.slice(1,3),16);
+      const g=parseInt(hex.slice(3,5),16);
+      const b=parseInt(hex.slice(5,7),16);
+      updateColor(r,g,b);
+      return;
+    }catch(err){
+      return;
+    }
+  }
+  
+  const rect=out.getBoundingClientRect();
+  const clickX = e.clientX - rect.left;
+  const clickY = e.clientY - rect.top;
+  
+  const imgX = Math.floor((clickX - panX) / zoom);
+  const imgY = Math.floor((clickY - panY) / zoom);
+  
+  if(imgX>=0 && imgY>=0 && imgX<W && imgY<H){
+    const pixel = offCtx.getImageData(imgX, imgY, 1, 1).data;
+    updateColor(pixel[0], pixel[1], pixel[2]);
+  }
+};
+
+$('toggle-pipette').onclick=()=>{
+  if(!window.EyeDropper){
+    alert("La pipette système n'est pas supportée par votre navigateur.");
+    return;
+  }
+  systemPipetteActive=!systemPipetteActive;
+  const btn = $('toggle-pipette');
+  if(systemPipetteActive){
+    btn.textContent = "Désactiver la pipette système";
+    btn.style.background = "var(--acc)";
+    btn.style.color = "var(--ink)";
+  }else{
+    btn.textContent = "Activer la pipette système";
+    btn.style.background = "var(--bg)";
+    btn.style.color = "var(--ink)";
+  }
+};
+</script>
+</body>
+</html>

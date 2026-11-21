@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Studio Convertisseur</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<!-- Bibliothèques CDN pour HEIC, PDF et ZIP (100% côté client) -->
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
+<style>
+/* === VARIABLES & BASE (DA identique à Studio Noir & Blanc) === */
+:root{
+  --bg:#FFFFFF;
+  --ink:#000000;
+  --acc:#D4FF00;
+  color-scheme:light;
+  box-sizing:border-box;
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font:400 14px/1.4 "Bricolage Grotesque",system-ui,sans-serif;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 350px;
+  gap:16px;
+  padding:16px;
+  height:100vh;
+}
+main{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:0;
+  min-width:0;
+  min-height:0;
+  height:100%;
+  overflow:hidden;
+}
+header{
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+  flex-wrap:wrap;
+  flex-shrink:0;
+}
+h1{font-size:28px;line-height:1;font-weight:800;margin:0;letter-spacing:-.02em}
+header span{color:var(--ink);opacity:.6;font-size:14px}
+h2{font-size:15px;font-weight:800;margin:0 0 4px}
+p{margin:0}
+
+/* === ZONE PRINCIPALE (.stage) === */
+.stage{
+  position:relative;
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  border:2px solid var(--ink);
+  overflow:hidden;
+  padding:12px;
+  background:var(--bg);
+}
+.view{
+  position:relative;
+  width:100%;
+  flex:1;
+  min-height:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+/* Damier subtil pour visualiser la transparence sous le canvas */
+canvas{
+  display:none;
+  max-width:100%;
+  max-height:100%;
+  width:auto;
+  height:auto;
+  touch-action:manipulation;
+  user-select:none;
+  -webkit-touch-callout:none;
+  border:2px solid var(--ink);
+  background-color:#ffffff;
+  background-image:
+    linear-gradient(45deg, #e5e5e5 25%, transparent 25%),
+    linear-gradient(-45deg, #e5e5e5 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e5e5e5 75%),
+    linear-gradient(-45deg, transparent 75%, #e5e5e5 75%);
+  background-size:16px 16px;
+  background-position:0 0, 0 8px, 8px -8px, -8px 0;
+}
+.view.has canvas{display:block}
+
+/* Zone de dépôt */
+#drop{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  text-align:center;
+  cursor:pointer;
+  background:var(--bg);
+  outline:2px dashed var(--ink);
+  outline-offset:-14px;
+  padding:30px;
+  z-index:2;
+}
+#drop strong{font-size:24px;font-weight:800}
+#drop .formats-list{
+  font-size:12px;
+  opacity:.65;
+  max-width:460px;
+}
+.view.has #drop{display:none}
+.view.has.over #drop{display:flex;background:var(--acc)}
+.over #drop{background:var(--acc)}
+
+/* Overlay de chargement (HEIC / ZIP) */
+#loader{
+  position:absolute;
+  inset:0;
+  background:rgba(255,255,255,.92);
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  z-index:10;
+  padding:20px;
+  text-align:center;
+}
+#loader.active{display:flex}
+#loader .box{
+  border:2px solid var(--ink);
+  background:var(--acc);
+  padding:14px 20px;
+  font-weight:800;
+  font-size:15px;
+  max-width:340px;
+  width:100%;
+}
+.prog-track{
+  width:100%;
+  height:10px;
+  border:2px solid var(--ink);
+  background:var(--bg);
+  margin-top:10px;
+  overflow:hidden;
+}
+.prog-fill{
+  height:100%;
+  width:0%;
+  background:var(--ink);
+  transition:width .15s linear;
+}
+
+/* Barre d'informations (format, dimensions, poids) */
+.infobar{
+  width:100%;
+  display:none;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px 14px;
+  border:2px solid var(--ink);
+  padding:6px 10px;
+  background:var(--bg);
+  font-size:13px;
+  flex-shrink:0;
+  font-variant-numeric:tabular-nums;
+}
+.infobar.show{display:flex}
+.infobar .tag{
+  display:inline-block;
+  background:var(--ink);
+  color:var(--acc);
+  font-weight:800;
+  padding:1px 6px;
+  font-size:12px;
+  text-transform:uppercase;
+}
+.infobar .delta{
+  font-weight:800;
+  padding:1px 6px;
+  border:1.5px solid var(--ink);
+  background:var(--acc);
+  color:var(--ink);
+  font-size:12px;
+}
+.infobar .delta.up{
+  background:var(--bg);
+}
+.infobar .meta-group{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+/* Pellicule compacte (multi-fichiers) */
+.filmstrip-wrap{
+  width:100%;
+  display:none;
+  align-items:center;
+  gap:8px;
+  flex-shrink:0;
+  border-top:2px solid var(--ink);
+  padding-top:8px;
+}
+.filmstrip-wrap.show{display:flex}
+.filmstrip{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  overflow-x:auto;
+  flex:1;
+  min-width:0;
+  padding:2px 0;
+  scrollbar-width:thin;
+}
+.thumb{
+  position:relative;
+  flex:0 0 auto;
+  width:56px;
+  height:56px;
+  border:2px solid var(--ink);
+  background:var(--bg);
+  cursor:pointer;
+  padding:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.thumb.active{
+  outline:3px solid var(--acc);
+  outline-offset:-3px;
+  box-shadow:0 0 0 2px var(--ink);
+}
+.thumb .rm{
+  position:absolute;
+  top:0;
+  right:0;
+  width:18px;
+  height:18px;
+  padding:0;
+  border:0;
+  border-left:2px solid var(--ink);
+  border-bottom:2px solid var(--ink);
+  background:var(--bg);
+  color:var(--ink);
+  font-size:12px;
+  line-height:1;
+  font-weight:800;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.thumb .rm:hover{
+  background:var(--ink);
+  color:var(--acc);
+}
+
+/* Barre d'actions */
+.bar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+}
+
+/* === CONTRÔLES GÉNÉRAUX === */
+button,select,input[type=text],input[type=number]{
+  font:inherit;
+  color:var(--ink);
+  border:2px solid var(--ink);
+  border-radius:0;
+  padding:8px 12px;
+  background:var(--bg);
+}
+button{
+  background:var(--acc);
+  font-weight:600;
+  cursor:pointer;
+}
+button:hover,button.pri{background:var(--ink);color:var(--acc)}
+button.pri:hover{background:var(--acc);color:var(--ink)}
+button.sec{background:var(--bg);color:var(--ink)}
+button.sec:hover{background:var(--ink);color:var(--acc)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button:disabled:hover{background:var(--acc);color:var(--ink)}
+button.pri:disabled:hover{background:var(--ink);color:var(--acc)}
+button.sec:disabled:hover{background:var(--bg);color:var(--ink)}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+
+/* === PANNEAU LATÉRAL === */
+aside.panel{
+  position:relative;
+  border:2px solid var(--ink);
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  min-height:0;
+  background:var(--bg);
+  padding:4px 16px 12px;
+  height:100%;
+  overflow-y:auto;
+  scrollbar-width:none;
+}
+aside.panel::-webkit-scrollbar{display:none}
+details{border-bottom:2px solid var(--ink);padding:14px 0}
+details:last-of-type{border-bottom:0}
+summary{
+  cursor:pointer;
+  font-weight:800;
+  font-size:15px;
+  list-style:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-weight:800;font-size:16px;line-height:1}
+details[open] summary::after{content:"−"}
+
+.row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:2px 8px;
+  margin:10px 0 0;
+}
+.row label{color:var(--ink);font-size:14px;font-weight:400;cursor:default}
+.row output{font-variant-numeric:tabular-nums;font-weight:600;font-size:14px}
+
+/* Sliders personnalisés */
+input[type=range]{
+  -webkit-appearance:none;
+  appearance:none;
+  width:100%;
+  height:22px;
+  background:transparent;
+  margin:0;
+  cursor:pointer;
+  grid-column:1/-1;
+}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--ink)}
+input[type=range]::-moz-range-track{height:4px;background:var(--ink)}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:20px;
+  height:20px;
+  margin-top:-8px;
+  background:var(--acc);
+  border:2px solid var(--ink);
+  border-radius:50%;
+}
+input[type=range]::-moz-range-thumb{
+  width:16px;
+  height:16px;
+  background:var(--acc);
+  border:2px solid var(--ink);
+  border-radius:50%;
+}
+
+/* Sélecteur de couleur */
+.col{
+  display:grid;
+  grid-template-columns:1fr 44px 96px;
+  gap:8px;
+  align-items:center;
+  margin-top:10px;
+}
+.col label{width:auto;color:var(--ink);font-size:14px}
+input[type=color]{
+  width:44px;
+  height:36px;
+  border:2px solid var(--ink);
+  padding:0;
+  background:var(--bg);
+  cursor:pointer;
+  border-radius:0;
+}
+input[type=text]{width:96px;text-transform:uppercase;padding:6px 8px}
+select{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  margin-top:4px;
+  cursor:pointer;
+  text-overflow:ellipsis;
+}
+
+/* Presets rapides */
+.presets{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:8px;
+  padding-bottom:12px;
+  border-bottom:2px solid var(--ink);
+}
+.presets button{
+  background:var(--acc);
+  font-weight:600;
+  padding:7px 8px;
+  font-size:13px;
+  border:2px solid var(--ink);
+}
+.presets button:hover,
+.presets button.active{
+  background:var(--ink);
+  color:var(--acc);
+}
+
+/* Switch personnalisé carré */
+.sw{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:10px 0 0;
+  cursor:pointer;
+  font-weight:600;
+}
+.sw input{
+  position:absolute;
+  left:0;
+  top:0;
+  width:1px;
+  height:1px;
+  opacity:0;
+  margin:0;
+  pointer-events:none;
+}
+.sw .t{
+  width:42px;
+  height:24px;
+  border:2px solid var(--ink);
+  background:var(--bg);
+  position:relative;
+  flex:none;
+}
+.sw .t::after{
+  content:"";
+  position:absolute;
+  top:2px;
+  left:2px;
+  width:16px;
+  height:16px;
+  background:var(--ink);
+  transition:transform .12s;
+}
+.sw input:checked+.t{background:var(--acc)}
+.sw input:checked+.t::after{transform:translateX(18px)}
+.sw input:focus-visible+.t{outline:3px solid var(--ink);outline-offset:2px}
+
+/* Champs dimensions et boutons de transformation */
+.dim-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:10px;
+}
+.dim-field{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.dim-field label{font-size:12px;font-weight:600}
+.dim-field input[type=number]{
+  width:100%;
+  padding:6px 8px;
+  font-variant-numeric:tabular-nums;
+}
+.dim-field input:disabled{opacity:.4;cursor:not-allowed}
+
+.tf-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:10px;
+}
+.tf-grid button{
+  padding:7px 8px;
+  font-size:13px;
+}
+.tf-status{
+  margin-top:8px;
+  font-size:12px;
+  opacity:.75;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Avertissements & notes */
+.notice{
+  margin-top:10px;
+  padding:8px 10px;
+  border:2px solid var(--ink);
+  background:var(--acc);
+  font-size:12px;
+  font-weight:600;
+  display:none;
+}
+.notice.show{display:block}
+.notice.warn{background:#FFF3CD}
+
+small{
+  color:var(--ink);
+  opacity:.7;
+  font-size:12px;
+  margin-top:6px;
+  display:block;
+}
+.hidden{display:none!important}
+
+/* Toast de notification non bloquant */
+#toast{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--ink);
+  color:var(--acc);
+  border:2px solid var(--ink);
+  padding:10px 16px;
+  font-weight:800;
+  font-size:13px;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .15s, transform .15s;
+  z-index:99;
+}
+#toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+
+/* === RESPONSIVE === */
+@media(max-width:860px){
+  html,body{overflow:auto;height:auto}
+  body{
+    grid-template-columns:1fr;
+    overflow:auto;
+    height:auto;
+    padding:12px;
+  }
+  main{height:auto;overflow:visible}
+  .stage{min-height:380px}
+  .view{min-height:240px}
+  aside.panel{
+    position:relative;
+    border:2px solid var(--ink);
+    height:auto;
+    overflow:visible;
+  }
+}
+</style>
+</head>
+<body>
+
+<main>
+  <header>
+    <h1>Studio Convertisseur</h1>
+    <span>Déposez vos images, convertissez vers n’importe quel format.</span>
+  </header>
+
+  <section class="stage">
+    <!-- Zone d'aperçu & glisser-déposer -->
+    <div class="view" id="view">
+      <div id="drop" tabindex="0" role="button" aria-label="Choisir une ou plusieurs images">
+        <strong>Glissez vos images ici</strong>
+        <span>ou cliquez pour choisir (plusieurs fichiers possibles, ou Ctrl+V)</span>
+        <span class="formats-list">Entrée : PNG, JPG, WEBP, HEIC/HEIF, AVIF, GIF, BMP, SVG, ICO</span>
+      </div>
+      <canvas id="out"></canvas>
+      <div id="loader" aria-live="polite">
+        <div class="box">
+          <div id="loaderText">Traitement en cours…</div>
+          <div class="prog-track" id="progTrack"><div class="prog-fill" id="progFill"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barre d'informations en direct -->
+    <div class="infobar" id="infobar">
+      <div class="meta-group">
+        <span id="fileName" style="font-weight:800;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        <span class="tag" id="srcFmtTag">PNG</span>
+        <span>→</span>
+        <span class="tag" id="dstFmtTag">JPG</span>
+      </div>
+      <div class="meta-group">
+        <span id="dimInfo">0 × 0 px</span>
+        <span>•</span>
+        <span id="sizeInfo">0 Ko → 0 Ko</span>
+        <span class="delta" id="deltaInfo">0%</span>
+      </div>
+    </div>
+
+    <!-- Pellicule compacte (visible quand plusieurs images sont importées) -->
+    <div class="filmstrip-wrap" id="filmstripWrap">
+      <div class="filmstrip" id="filmstrip" role="list" aria-label="Images importées"></div>
+      <button id="clearAll" class="sec" style="padding:6px 10px;font-size:12px;flex-shrink:0;">Tout effacer</button>
+    </div>
+
+    <!-- Barre d'actions -->
+    <div class="bar">
+      <button id="pick">Ajouter des images</button>
+      <button id="download" class="pri" disabled>Télécharger</button>
+      <button id="downloadZip" class="hidden" disabled>Tout convertir (.zip)</button>
+      <button id="copyB64" class="hidden" disabled>Copier Base64</button>
+      <button id="reset" class="sec">Réinitialiser</button>
+    </div>
+
+    <input type="file" id="file" accept="image/*,.heic,.heif,.ico,.bmp,.svg,.webp,.avif,.gif,.png,.jpg,.jpeg" multiple hidden>
+  </section>
+</main>
+
+<aside class="panel">
+  <!-- Presets rapides en 1 clic -->
+  <div class="presets" id="presets">
+    <button data-preset="png">PNG</button>
+    <button data-preset="jpeg">JPG</button>
+    <button data-preset="webp">WebP</button>
+    <button data-preset="ico">Favicon .ico</button>
+    <button data-preset="pdf">PDF</button>
+    <button data-preset="bmp">BMP</button>
+    <button data-preset="svg">SVG</button>
+    <button data-preset="base64">Base64</button>
+  </div>
+
+  <!-- Section 1 : Format de sortie -->
+  <details open>
+    <summary>Format de sortie</summary>
+    <div class="row">
+      <label for="fmt">Format cible</label>
+      <select id="fmt" style="grid-column:1/-1">
+        <option value="png">PNG (.png) — sans perte, transparence</option>
+        <option value="jpeg" selected>JPEG (.jpg) — compression réglable</option>
+        <option value="webp">WebP (.webp) — moderne, léger</option>
+        <option value="avif">AVIF (.avif) — nouvelle génération</option>
+        <option value="bmp">BMP (.bmp) — bitmap 24-bit natif</option>
+        <option value="ico">ICO (.ico) — icône / favicon</option>
+        <option value="svg">SVG (.svg) — conteneur vectoriel</option>
+        <option value="pdf">PDF (.pdf) — document adapté</option>
+        <option value="base64">Base64 (.txt) — Data URL complète</option>
+      </select>
+    </div>
+
+    <div id="avifWarn" class="notice warn">
+      Votre navigateur ne prend pas en charge l’encodage natif AVIF. Choisissez WebP, PNG ou JPEG.
+    </div>
+
+    <div class="row" id="qualRow">
+      <label for="qual" title="Double-clic pour réinitialiser">Qualité</label>
+      <output id="o_qual">85%</output>
+      <input id="qual" type="range" min="10" max="100" step="1" value="85">
+    </div>
+
+    <div class="row hidden" id="icoRow">
+      <label for="icoSize">Taille de l’icône</label>
+      <select id="icoSize" style="grid-column:1/-1">
+        <option value="32">32 × 32 px (Favicon standard)</option>
+        <option value="64">64 × 64 px (Haute densité)</option>
+        <option value="128">128 × 128 px (Application)</option>
+        <option value="256" selected>256 × 256 px (Haute définition)</option>
+      </select>
+    </div>
+
+    <small id="fmtDesc">Compression réglable. La transparence est remplacée par la couleur de fond.</small>
+  </details>
+
+  <!-- Section 2 : Fond & Transparence -->
+  <details open>
+    <summary>Fond &amp; Transparence</summary>
+    <div class="col">
+      <label for="bgHex">Couleur →</label>
+      <input type="color" id="bgPick" value="#ffffff">
+      <input type="text" id="bgHex" value="#FFFFFF" maxlength="7" spellcheck="false">
+    </div>
+    <label class="sw">
+      <input type="checkbox" id="forceBg">
+      <span class="t"></span>
+      Forcer un fond uni
+    </label>
+    <small id="bgNote">Appliqué automatiquement pour JPG, BMP et PDF.</small>
+  </details>
+
+  <!-- Section 3 : Redimensionnement -->
+  <details>
+    <summary>Redimensionnement</summary>
+    <label class="sw">
+      <input type="checkbox" id="enableResize">
+      <span class="t"></span>
+      Redimensionner
+    </label>
+    <div id="resizeControls" style="opacity:.45;pointer-events:none;transition:opacity .12s">
+      <div class="row">
+        <label for="scale" title="Double-clic pour réinitialiser">Échelle</label>
+        <output id="o_scale">100%</output>
+        <input id="scale" type="range" min="10" max="200" step="1" value="100">
+      </div>
+      <div class="dim-grid">
+        <div class="dim-field">
+          <label for="resW">Largeur (px)</label>
+          <input type="number" id="resW" min="1" max="10000" value="0">
+        </div>
+        <div class="dim-field">
+          <label for="resH">Hauteur (px)</label>
+          <input type="number" id="resH" min="1" max="10000" value="0">
+        </div>
+      </div>
+      <label class="sw">
+        <input type="checkbox" id="keepRatio" checked>
+        <span class="t"></span>
+        Conserver les proportions
+      </label>
+    </div>
+  </details>
+
+  <!-- Section 4 : Transformation -->
+  <details>
+    <summary>Transformation</summary>
+    <div class="tf-grid">
+      <button id="rotL" type="button">↺ Pivoter −90°</button>
+      <button id="rotR" type="button">↻ Pivoter +90°</button>
+      <button id="flipH" type="button">⇄ Miroir H</button>
+      <button id="flipV" type="button">⇅ Miroir V</button>
+    </div>
+    <div class="tf-status" id="tfStatus">Rotation : 0° • Miroir : aucun</div>
+  </details>
+</aside>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  // === DESCRIPTIONS ET EXTENSIONS DES FORMATS ===
+  const FORMAT_META = {
+    png:    { ext: 'png',  label: 'PNG',    mime: 'image/png',        hasQual: false, opaque: false, desc: 'Sans perte, conserve la transparence.' },
+    jpeg:   { ext: 'jpg',  label: 'JPG',    mime: 'image/jpeg',       hasQual: true,  opaque: true,  desc: 'Compression réglable. Aplatit la transparence sur la couleur de fond.' },
+    webp:   { ext: 'webp', label: 'WEBP',   mime: 'image/webp',       hasQual: true,  opaque: false, desc: 'Format moderne très léger avec gestion de la transparence.' },
+    avif:   { ext: 'avif', label: 'AVIF',   mime: 'image/avif',       hasQual: true,  opaque: false, desc: 'Compression nouvelle génération (dépend du support navigateur).' },
+    bmp:    { ext: 'bmp',  label: 'BMP',    mime: 'image/bmp',        hasQual: false, opaque: true,  desc: 'Bitmap 24-bit non compressé généré nativement en JavaScript.' },
+    ico:    { ext: 'ico',  label: 'ICO',    mime: 'image/x-icon',     hasQual: false, opaque: false, desc: 'Icône Windows / Favicon carré avec PNG embarqué.' },
+    svg:    { ext: 'svg',  label: 'SVG',    mime: 'image/svg+xml',    hasQual: false, opaque: false, desc: 'Encapsule l’image dans un fichier SVG propre avec viewBox exact.' },
+    pdf:    { ext: 'pdf',  label: 'PDF',    mime: 'application/pdf',  hasQual: true,  opaque: true,  desc: 'Document PDF calibré à la taille et l’orientation de l’image.' },
+    base64: { ext: 'txt',  label: 'BASE64', mime: 'text/plain',       hasQual: false, opaque: false, desc: 'Exporte la Data URL complète en .txt ou dans le presse-papier.' }
+  };
+
+  // === ÉTAT DE L'APPLICATION ===
+  const state = {
+    items: [],          // { id, name, baseName, srcExt, origSize, img, width, height, thumbUrl }
+    activeIdx: -1,
+    fmt: 'jpeg',
+    qual: 85,
+    icoSize: 256,
+    bgColor: '#FFFFFF',
+    forceBg: false,
+    enableResize: false,
+    scale: 100,
+    resW: 0,
+    resH: 0,
+    keepRatio: true,
+    rot: 0,             // 0, 90, 180, 270
+    flipH: false,
+    flipV: false,
+    avifSupported: true,
+    lastBlob: null,
+    lastDataUrl: '',
+    estToken: 0
+  };
+
+  const outCanvas = $('out');
+  const outCtx = outCanvas.getContext('2d', { willReadFrequently: true });
+
+  // === DÉTECTION DU SUPPORT AVIF ===
+  function detectAvifSupport() {
+    const c = document.createElement('canvas');
+    c.width = 1; c.height = 1;
+    return new Promise(resolve => {
+      try {
+        c.toBlob(blob => {
+          resolve(Boolean(blob && blob.type === 'image/avif'));
+        }, 'image/avif', 0.8);
+      } catch {
+        resolve(false);
+      }
+    });
+  }
+  detectAvifSupport().then(ok => {
+    state.avifSupported = ok;
+    updateFormatUI();
+  });
+
+  // === UTILITAIRES ===
+  let toastTimer = 0;
+  function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  function showLoader(text, progress = null) {
+    $('loaderText').textContent = text;
+    if (progress === null) {
+      $('progTrack').style.display = 'none';
+    } else {
+      $('progTrack').style.display = 'block';
+      $('progFill').style.width = Math.max(0, Math.min(100, progress)) + '%';
+    }
+    $('loader').classList.add('active');
+  }
+
+  function hideLoader() {
+    $('loader').classList.remove('active');
+  }
+
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes < 0) return '0 o';
+    if (bytes < 1024) return bytes + ' o';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1).replace('.', ',') + ' Ko';
+    return (bytes / (1024 * 1024)).toFixed(2).replace('.', ',') + ' Mo';
+  }
+
+  function getBaseName(filename) {
+    const idx = filename.lastIndexOf('.');
+    return idx > 0 ? filename.slice(0, idx) : filename;
+  }
+
+  function detectSourceFormat(file) {
+    const extMatch = (file.name || '').match(/\.([a-z0-9]+)$/i);
+    if (extMatch) return extMatch[1].toUpperCase();
+    if (file.type && file.type.includes('/')) {
+      return file.type.split('/')[1].replace('+xml', '').toUpperCase();
+    }
+    return 'IMG';
+  }
+
+  const hexOk = s => /^#[0-9a-f]{6}$/i.test(s);
+
+  function getActiveItem() {
+    return state.activeIdx >= 0 && state.activeIdx < state.items.length
+      ? state.items[state.activeIdx]
+      : null;
+  }
+
+  // Dimensions naturelles après rotation (avant redimensionnement)
+  function getRotatedDims(item) {
+    const swapped = (state.rot % 180) !== 0;
+    return {
+      w: swapped ? item.height : item.width,
+      h: swapped ? item.width : item.height
+    };
+  }
+
+  // Dimensions finales cibles pour un élément donné
+  function getTargetDims(item) {
+    if (state.fmt === 'ico') {
+      return { w: state.icoSize, h: state.icoSize };
+    }
+    const rotDims = getRotatedDims(item);
+    if (!state.enableResize) {
+      return rotDims;
+    }
+    // Pour l'image active, utiliser resW / resH exacts si définis ; pour le batch, appliquer l'échelle
+    const active = getActiveItem();
+    if (active && item.id === active.id && state.resW > 0 && state.resH > 0) {
+      return { w: Math.max(1, Math.round(state.resW)), h: Math.max(1, Math.round(state.resH)) };
+    }
+    const factor = state.scale / 100;
+    return {
+      w: Math.max(1, Math.round(rotDims.w * factor)),
+      h: Math.max(1, Math.round(rotDims.h * factor))
+    };
+  }
+
+  // === CHARGEMENT DES FICHIERS (PNG, JPG, WEBP, HEIC/HEIF, GIF, BMP, SVG, AVIF, ICO) ===
+  function isHeicFile(file) {
+    const name = (file.name || '').toLowerCase();
+    const type = (file.type || '').toLowerCase();
+    return name.endsWith('.heic') || name.endsWith('.heif') || type === 'image/heic' || type === 'image/heif';
+  }
+
+  function blobToImage(blob) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const im = new Image();
+      im.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(im);
+      };
+      im.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Impossible de décoder cette image.'));
+      };
+      im.src = url;
+    });
+  }
+
+  function makeThumbUrl(img) {
+    const c = document.createElement('canvas');
+    const s = 112;
+    c.width = s; c.height = s;
+    const ctx = c.getContext('2d');
+    const scale = Math.max(s / img.width, s / img.height);
+    const dw = img.width * scale;
+    const dh = img.height * scale;
+    ctx.drawImage(img, (s - dw) / 2, (s - dh) / 2, dw, dh);
+    return c.toDataURL('image/jpeg', 0.75);
+  }
+
+  async function importFiles(fileList) {
+    const files = Array.from(fileList || []).filter(f => f && (f.type.startsWith('image/') || /\.(png|jpe?g|webp|heic|heif|avif|gif|bmp|svg|ico)$/i.test(f.name)));
+    if (!files.length) {
+      showToast('Aucun fichier image reconnu.');
+      return;
+    }
+
+    let added = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const srcExt = detectSourceFormat(file);
+      try {
+        let decodeBlob = file;
+        if (isHeicFile(file)) {
+          showLoader(`Décodage HEIC (${i + 1}/${files.length}) : ${file.name}…`, ((i + 0.3) / files.length) * 100);
+          if (typeof window.heic2any !== 'function') {
+            throw new Error('Bibliothèque HEIC indisponible (vérifiez votre connexion).');
+          }
+          const converted = await window.heic2any({ blob: file, toType: 'image/png' });
+          decodeBlob = Array.isArray(converted) ? converted[0] : converted;
+        } else if (files.length > 1) {
+          showLoader(`Chargement (${i + 1}/${files.length})…`, ((i + 1) / files.length) * 100);
+        }
+
+        const img = await blobToImage(decodeBlob);
+        const item = {
+          id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+          name: file.name || `image-${state.items.length + 1}.png`,
+          baseName: getBaseName(file.name || `image-${state.items.length + 1}`),
+          srcExt,
+          origSize: file.size || decodeBlob.size,
+          img,
+          width: img.naturalWidth || img.width,
+          height: img.naturalHeight || img.height,
+          thumbUrl: makeThumbUrl(img)
+        };
+        state.items.push(item);
+        added++;
+      } catch (err) {
+        console.error(err);
+        showToast(`Erreur sur ${file.name} : ${err.message}`);
+      }
+    }
+
+    hideLoader();
+    if (added > 0) {
+      state.activeIdx = state.items.length - 1;
+      syncResizeInputsFromActive();
+      renderFilmstrip();
+      updateUIState();
+      renderPreviewAndEstimate();
+      if (added > 1) showToast(`${added} images importées.`);
+    }
+  }
+
+  // === RENDU SUR UN CANVAS CIBLE ===
+  function renderItemToCanvas(item, targetCanvas) {
+    const meta = FORMAT_META[state.fmt];
+    const dims = getTargetDims(item);
+    const W = dims.w;
+    const H = dims.h;
+
+    targetCanvas.width = W;
+    targetCanvas.height = H;
+    const ctx = targetCanvas.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    // Remplissage du fond si format opaque ou si "Forcer un fond uni" est coché
+    const useBg = meta.opaque || state.forceBg;
+    ctx.clearRect(0, 0, W, H);
+    if (useBg) {
+      ctx.fillStyle = hexOk(state.bgColor) ? state.bgColor : '#FFFFFF';
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    if (state.flipH || state.flipV) {
+      ctx.scale(state.flipH ? -1 : 1, state.flipV ? -1 : 1);
+    }
+    if (state.rot !== 0) {
+      ctx.rotate((state.rot * Math.PI) / 180);
+    }
+
+    const swapped = (state.rot % 180) !== 0;
+
+    if (state.fmt === 'ico') {
+      // Cadrage "contain" centré dans le carré ICO pour éviter toute déformation
+      const rotDims = getRotatedDims(item);
+      const fitScale = Math.min(W / rotDims.w, H / rotDims.h);
+      const drawW = item.width * fitScale;
+      const drawH = item.height * fitScale;
+      ctx.drawImage(item.img, -drawW / 2, -drawH / 2, drawW, drawH);
+    } else {
+      const drawW = swapped ? H : W;
+      const drawH = swapped ? W : H;
+      ctx.drawImage(item.img, -drawW / 2, -drawH / 2, drawW, drawH);
+    }
+
+    ctx.restore();
+    return targetCanvas;
+  }
+
+  // === ENCODEURS NATIFS (BMP 24-BIT, ICO, SVG, PDF, BASE64, PNG/JPG/WEBP/AVIF) ===
+
+  // 1. Encodeur BMP 24-bit en pur JavaScript (ArrayBuffer / DataView)
+  function encodeBMP(canvas) {
+    const width = canvas.width;
+    const height = canvas.height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const imgData = ctx.getImageData(0, 0, width, height).data;
+
+    const rowSize = ((width * 3 + 3) & ~3); // Alignement sur 4 octets
+    const pixelArraySize = rowSize * height;
+    const fileSize = 54 + pixelArraySize;
+
+    const buffer = new ArrayBuffer(fileSize);
+    const view = new DataView(buffer);
+
+    // BITMAPFILEHEADER (14 octets)
+    view.setUint8(0, 0x42); // 'B'
+    view.setUint8(1, 0x4D); // 'M'
+    view.setUint32(2, fileSize, true);
+    view.setUint16(6, 0, true);
+    view.setUint16(8, 0, true);
+    view.setUint32(10, 54, true); // Offset données pixels
+
+    // BITMAPINFOHEADER (40 octets)
+    view.setUint32(14, 40, true);
+    view.setInt32(18, width, true);
+    view.setInt32(22, height, true); // Positif = stockage bottom-up
+    view.setUint16(26, 1, true);     // Plans couleur
+    view.setUint16(28, 24, true);    // 24 bits par pixel (BGR)
+    view.setUint32(30, 0, true);     // BI_RGB (non compressé)
+    view.setUint32(34, pixelArraySize, true);
+    view.setInt32(38, 2835, true);   // ~72 DPI horizontal
+    view.setInt32(42, 2835, true);   // ~72 DPI vertical
+    view.setUint32(46, 0, true);
+    view.setUint32(50, 0, true);
+
+    const bytes = new Uint8Array(buffer);
+    let offset = 54;
+    for (let y = height - 1; y >= 0; y--) {
+      const rowStart = y * width * 4;
+      for (let x = 0; x < width; x++) {
+        const idx = rowStart + x * 4;
+        bytes[offset++] = imgData[idx + 2]; // B
+        bytes[offset++] = imgData[idx + 1]; // G
+        bytes[offset++] = imgData[idx];     // R
+      }
+      // Padding de fin de ligne
+      const pad = rowSize - width * 3;
+      for (let p = 0; p < pad; p++) bytes[offset++] = 0;
+    }
+
+    return new Blob([buffer], { type: 'image/bmp' });
+  }
+
+  // 2. Encodeur ICO valide en pur JavaScript (ICONDIR + ICONDIRENTRY + PNG embarqué)
+  async function encodeICO(canvas) {
+    const pngBlob = await canvasToBlobAsync(canvas, 'image/png', 1);
+    const pngBuf = await pngBlob.arrayBuffer();
+    const pngBytes = new Uint8Array(pngBuf);
+
+    const size = canvas.width;
+    const headerSize = 6 + 16; // ICONDIR (6) + ICONDIRENTRY (16)
+    const totalSize = headerSize + pngBytes.length;
+
+    const buffer = new ArrayBuffer(totalSize);
+    const view = new DataView(buffer);
+
+    // ICONDIR (6 octets)
+    view.setUint16(0, 0, true); // Reserved
+    view.setUint16(2, 1, true); // Type 1 = ICO
+    view.setUint16(4, 1, true); // 1 image
+
+    // ICONDIRENTRY (16 octets)
+    const dimByte = size >= 256 ? 0 : size; // 0 représente 256px dans la spec ICO
+    view.setUint8(6, dimByte);               // Width
+    view.setUint8(7, dimByte);               // Height
+    view.setUint8(8, 0);                     // ColorCount
+    view.setUint8(9, 0);                     // Reserved
+    view.setUint16(10, 1, true);             // Planes
+    view.setUint16(12, 32, true);            // BitCount (32-bit RGBA)
+    view.setUint32(14, pngBytes.length, true); // BytesInRes
+    view.setUint32(18, headerSize, true);      // ImageOffset
+
+    // Copie du payload PNG
+    new Uint8Array(buffer, headerSize).set(pngBytes);
+    return new Blob([buffer], { type: 'image/x-icon' });
+  }
+
+  // 3. Encodeur SVG (encapsule l'image avec viewBox exact)
+  function encodeSVG(canvas) {
+    const w = canvas.width;
+    const h = canvas.height;
+    const dataUrl = canvas.toDataURL('image/png');
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">\n  <image width="${w}" height="${h}" href="${dataUrl}"/>\n</svg>`;
+    return new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+  }
+
+  // 4. Encodeur PDF via jsPDF
+  function encodePDF(canvas) {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      throw new Error('Bibliothèque jsPDF non chargée.');
+    }
+    const { jsPDF } = window.jspdf;
+    const w = canvas.width;
+    const h = canvas.height;
+    // Conversion px (96dpi) -> pt (72dpi)
+    const ptW = Math.max(1, w * 0.75);
+    const ptH = Math.max(1, h * 0.75);
+    const orientation = ptW > ptH ? 'l' : 'p';
+
+    const pdf = new jsPDF({
+      orientation,
+      unit: 'pt',
+      format: [ptW, ptH],
+      compress: true
+    });
+    const imgData = canvas.toDataURL('image/jpeg', state.qual / 100);
+    pdf.addImage(imgData, 'JPEG', 0, 0, ptW, ptH, undefined, 'FAST');
+    return pdf.output('blob');
+  }
+
+  // 5. Encodeur Base64 (.txt)
+  function encodeBase64(canvas) {
+    const mime = state.forceBg ? 'image/jpeg' : 'image/png';
+    const dataUrl = canvas.toDataURL(mime, state.qual / 100);
+    return {
+      blob: new Blob([dataUrl], { type: 'text/plain;charset=utf-8' }),
+      dataUrl
+    };
+  }
+
+  function canvasToBlobAsync(canvas, mime, quality) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(blob => {
+        if (blob) resolve(blob);
+        else reject(new Error(`Encodage ${mime} impossible.`));
+      }, mime, quality);
+    });
+  }
+
+  // Conversion universelle d'un canvas vers le format sélectionné
+  async function convertCanvas(canvas) {
+    const fmt = state.fmt;
+    const q = state.qual / 100;
+
+    if (fmt === 'png') {
+      return { blob: await canvasToBlobAsync(canvas, 'image/png', 1) };
+    }
+    if (fmt === 'jpeg') {
+      return { blob: await canvasToBlobAsync(canvas, 'image/jpeg', q) };
+    }
+    if (fmt === 'webp') {
+      return { blob: await canvasToBlobAsync(canvas, 'image/webp', q) };
+    }
+    if (fmt === 'avif') {
+      if (!state.avifSupported) {
+        throw new Error('Encodage AVIF non supporté par ce navigateur.');
+      }
+      return { blob: await canvasToBlobAsync(canvas, 'image/avif', q) };
+    }
+    if (fmt === 'bmp') {
+      return { blob: encodeBMP(canvas) };
+    }
+    if (fmt === 'ico') {
+      return { blob: await encodeICO(canvas) };
+    }
+    if (fmt === 'svg') {
+      return { blob: encodeSVG(canvas) };
+    }
+    if (fmt === 'pdf') {
+      return { blob: encodePDF(canvas) };
+    }
+    if (fmt === 'base64') {
+      return encodeBase64(canvas);
+    }
+    throw new Error('Format inconnu.');
+  }
+
+  // === APERÇU EN DIRECT & ESTIMATION DU POIDS ===
+  let estTimer = 0;
+  function renderPreviewAndEstimate() {
+    const item = getActiveItem();
+    if (!item) return;
+
+    renderItemToCanvas(item, outCanvas);
+
+    // Mise à jour immédiate des infos textuelles
+    const meta = FORMAT_META[state.fmt];
+    $('fileName').textContent = item.name;
+    $('fileName').title = item.name;
+    $('srcFmtTag').textContent = item.srcExt;
+    $('dstFmtTag').textContent = meta.label;
+    $('dimInfo').textContent = `${outCanvas.width} × ${outCanvas.height} px`;
+
+    // Estimation asynchrone légèrement différée pour garder les sliders fluides
+    clearTimeout(estTimer);
+    const token = ++state.estToken;
+
+    if (state.fmt === 'avif' && !state.avifSupported) {
+      $('sizeInfo').textContent = `${formatBytes(item.origSize)} → Indisponible`;
+      $('deltaInfo').textContent = 'N/A';
+      $('deltaInfo').classList.add('up');
+      state.lastBlob = null;
+      return;
+    }
+
+    $('sizeInfo').textContent = `${formatBytes(item.origSize)} → calcul…`;
+    estTimer = setTimeout(async () => {
+      try {
+        const res = await convertCanvas(outCanvas);
+        if (token !== state.estToken) return;
+        state.lastBlob = res.blob;
+        state.lastDataUrl = res.dataUrl || '';
+
+        const outSize = res.blob.size;
+        const pct = item.origSize > 0
+          ? Math.round(((outSize - item.origSize) / item.origSize) * 100)
+          : 0;
+        const sign = pct > 0 ? '+' : '';
+        $('sizeInfo').textContent = `${formatBytes(item.origSize)} → ${formatBytes(outSize)}`;
+        $('deltaInfo').textContent = `${sign}${pct}%`;
+        $('deltaInfo').classList.toggle('up', pct > 0);
+      } catch (err) {
+        if (token !== state.estToken) return;
+        state.lastBlob = null;
+        $('sizeInfo').textContent = `${formatBytes(item.origSize)} → Erreur`;
+        $('deltaInfo').textContent = '!';
+        $('deltaInfo').classList.add('up');
+      }
+    }, 90);
+  }
+
+  // === TÉLÉCHARGEMENT INDIVIDUEL & PAR LOT (.ZIP) ===
+  function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function downloadCurrent() {
+    const item = getActiveItem();
+    if (!item) return;
+    if (state.fmt === 'avif' && !state.avifSupported) {
+      showToast('Votre navigateur ne supporte pas l’encodage AVIF.');
+      return;
+    }
+    try {
+      const res = await convertCanvas(outCanvas);
+      const ext = FORMAT_META[state.fmt].ext;
+      triggerDownload(res.blob, `${item.baseName}.${ext}`);
+      showToast(`Téléchargé : ${item.baseName}.${ext}`);
+    } catch (err) {
+      showToast(err.message);
+    }
+  }
+
+  async function downloadAllZip() {
+    if (state.items.length < 2) return;
+    if (state.fmt === 'avif' && !state.avifSupported) {
+      showToast('Votre navigateur ne supporte pas l’encodage AVIF.');
+      return;
+    }
+    if (typeof window.JSZip !== 'function') {
+      showToast('Bibliothèque JSZip indisponible.');
+      return;
+    }
+
+    const zip = new window.JSZip();
+    const offCanvas = document.createElement('canvas');
+    const ext = FORMAT_META[state.fmt].ext;
+    const usedNames = new Map();
+
+    try {
+      for (let i = 0; i < state.items.length; i++) {
+        const item = state.items[i];
+        showLoader(`Conversion (${i + 1}/${state.items.length}) : ${item.name}`, ((i + 0.5) / state.items.length) * 90);
+        // Laisser le navigateur rafraîchir l'UI
+        await new Promise(r => setTimeout(r, 15));
+
+        renderItemToCanvas(item, offCanvas);
+        const res = await convertCanvas(offCanvas);
+
+        // Éviter les collisions de noms dans le ZIP
+        let base = item.baseName;
+        const count = usedNames.get(base) || 0;
+        usedNames.set(base, count + 1);
+        const finalName = count > 0 ? `${base}_${count}.${ext}` : `${base}.${ext}`;
+
+        zip.file(finalName, res.blob);
+      }
+
+      showLoader('Création de l’archive ZIP…', 95);
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      hideLoader();
+      triggerDownload(zipBlob, `studio-convertisseur-${ext}.zip`);
+      showToast(`Archive ZIP téléchargée (${state.items.length} fichiers).`);
+    } catch (err) {
+      hideLoader();
+      showToast(`Erreur ZIP : ${err.message}`);
+    }
+  }
+
+  // Copie Base64 compatible iframe (document.execCommand('copy'))
+  async function copyBase64() {
+    const item = getActiveItem();
+    if (!item) return;
+    try {
+      const dataUrl = state.lastDataUrl || encodeBase64(outCanvas).dataUrl;
+      const ta = document.createElement('textarea');
+      ta.value = dataUrl;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      if (ok) {
+        showToast('Data URL Base64 copiée dans le presse-papier !');
+      } else {
+        showToast('Impossible de copier automatiquement.');
+      }
+    } catch (err) {
+      showToast('Erreur lors de la copie.');
+    }
+  }
+
+  // === PELLICULE MULTI-FICHIERS ===
+  function renderFilmstrip() {
+    const wrap = $('filmstripWrap');
+    const strip = $('filmstrip');
+    strip.innerHTML = '';
+
+    if (state.items.length <= 1) {
+      wrap.classList.remove('show');
+      return;
+    }
+
+    wrap.classList.add('show');
+    state.items.forEach((item, idx) => {
+      const btn = document.createElement('div');
+      btn.className = 'thumb' + (idx === state.activeIdx ? ' active' : '');
+      btn.title = `${item.name} (${item.width}×${item.height})`;
+      btn.setAttribute('role', 'listitem');
+      btn.tabIndex = 0;
+
+      const im = document.createElement('img');
+      im.src = item.thumbUrl;
+      im.alt = item.name;
+
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'rm';
+      rm.textContent = '×';
+      rm.title = 'Retirer cette image';
+      rm.onclick = e => {
+        e.stopPropagation();
+        removeItem(idx);
+      };
+
+      btn.onclick = () => selectItem(idx);
+      btn.onkeydown = e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectItem(idx);
+        }
+      };
+
+      btn.appendChild(im);
+      btn.appendChild(rm);
+      strip.appendChild(btn);
+    });
+  }
+
+  function selectItem(idx) {
+    if (idx < 0 || idx >= state.items.length) return;
+    state.activeIdx = idx;
+    syncResizeInputsFromActive();
+    renderFilmstrip();
+    renderPreviewAndEstimate();
+  }
+
+  function removeItem(idx) {
+    state.items.splice(idx, 1);
+    if (state.items.length === 0) {
+      state.activeIdx = -1;
+    } else if (state.activeIdx >= state.items.length) {
+      state.activeIdx = state.items.length - 1;
+    }
+    syncResizeInputsFromActive();
+    renderFilmstrip();
+    updateUIState();
+    if (state.activeIdx >= 0) renderPreviewAndEstimate();
+  }
+
+  function clearAllItems() {
+    state.items = [];
+    state.activeIdx = -1;
+    state.lastBlob = null;
+    state.lastDataUrl = '';
+    renderFilmstrip();
+    updateUIState();
+    showToast('Toutes les images ont été retirées.');
+  }
+
+  // === SYNCHRONISATION DE L'INTERFACE ===
+  function updateUIState() {
+    const has = state.items.length > 0;
+    const multi = state.items.length > 1;
+    const avifBlocked = state.fmt === 'avif' && !state.avifSupported;
+
+    $('view').classList.toggle('has', has);
+    $('infobar').classList.toggle('show', has);
+    $('download').disabled = !has || avifBlocked;
+
+    $('downloadZip').classList.toggle('hidden', !multi);
+    $('downloadZip').disabled = !multi || avifBlocked;
+
+    $('copyB64').classList.toggle('hidden', state.fmt !== 'base64');
+    $('copyB64').disabled = !has;
+  }
+
+  function updateFormatUI() {
+    const meta = FORMAT_META[state.fmt];
+    $('fmt').value = state.fmt;
+    $('fmtDesc').textContent = meta.desc;
+    $('qualRow').classList.toggle('hidden', !meta.hasQual);
+    $('icoRow').classList.toggle('hidden', state.fmt !== 'ico');
+    $('avifWarn').classList.toggle('show', state.fmt === 'avif' && !state.avifSupported);
+
+    // Mise en évidence du bouton preset actif
+    document.querySelectorAll('#presets button').forEach(b => {
+      b.classList.toggle('active', b.dataset.preset === state.fmt);
+    });
+
+    updateUIState();
+    if (getActiveItem()) renderPreviewAndEstimate();
+  }
+
+  function syncResizeInputsFromActive() {
+    const item = getActiveItem();
+    if (!item) {
+      $('resW').value = 0;
+      $('resH').value = 0;
+      return;
+    }
+    const rotDims = getRotatedDims(item);
+    const factor = state.scale / 100;
+    state.resW = Math.max(1, Math.round(rotDims.w * factor));
+    state.resH = Math.max(1, Math.round(rotDims.h * factor));
+    $('resW').value = state.resW;
+    $('resH').value = state.resH;
+  }
+
+  function updateTransformStatus() {
+    const flips = [];
+    if (state.flipH) flips.push('H');
+    if (state.flipV) flips.push('V');
+    $('tfStatus').textContent = `Rotation : ${state.rot}° • Miroir : ${flips.length ? flips.join(' + ') : 'aucun'}`;
+  }
+
+  function resetSettings() {
+    state.fmt = 'jpeg';
+    state.qual = 85;
+    state.icoSize = 256;
+    state.bgColor = '#FFFFFF';
+    state.forceBg = false;
+    state.enableResize = false;
+    state.scale = 100;
+    state.keepRatio = true;
+    state.rot = 0;
+    state.flipH = false;
+    state.flipV = false;
+
+    $('qual').value = 85;
+    $('o_qual').textContent = '85%';
+    $('icoSize').value = '256';
+    $('bgPick').value = '#ffffff';
+    $('bgHex').value = '#FFFFFF';
+    $('forceBg').checked = false;
+    $('enableResize').checked = false;
+    $('resizeControls').style.opacity = '.45';
+    $('resizeControls').style.pointerEvents = 'none';
+    $('scale').value = 100;
+    $('o_scale').textContent = '100%';
+    $('keepRatio').checked = true;
+
+    syncResizeInputsFromActive();
+    updateTransformStatus();
+    updateFormatUI();
+    showToast('Paramètres réinitialisés.');
+  }
+
+  // === ÉVÉNEMENTS ===
+
+  // Import : clic, drag & drop, Ctrl+V
+  $('pick').onclick = () => $('file').click();
+  $('drop').onclick = () => $('file').click();
+  $('drop').onkeydown = e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      $('file').click();
+    }
+  };
+  $('file').onchange = e => {
+    importFiles(e.target.files);
+    e.target.value = '';
+  };
+
+  const dz = $('view');
+  ['dragenter', 'dragover'].forEach(t =>
+    dz.addEventListener(t, e => {
+      e.preventDefault();
+      dz.classList.add('over');
+    })
+  );
+  ['dragleave', 'drop'].forEach(t =>
+    dz.addEventListener(t, e => {
+      e.preventDefault();
+      dz.classList.remove('over');
+    })
+  );
+  dz.addEventListener('drop', e => importFiles(e.dataTransfer.files));
+
+  window.addEventListener('paste', e => {
+    const files = e.clipboardData && e.clipboardData.files;
+    if (files && files.length) importFiles(files);
+  });
+
+  // Presets rapides
+  $('presets').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-preset]');
+    if (!btn) return;
+    state.fmt = btn.dataset.preset;
+    updateFormatUI();
+  });
+
+  // Format, qualité, taille ICO
+  $('fmt').onchange = e => {
+    state.fmt = e.target.value;
+    updateFormatUI();
+  };
+  $('qual').oninput = e => {
+    state.qual = +e.target.value;
+    $('o_qual').textContent = state.qual + '%';
+    renderPreviewAndEstimate();
+  };
+  $('qual').previousElementSibling.ondblclick = () => {
+    state.qual = 85;
+    $('qual').value = 85;
+    $('o_qual').textContent = '85%';
+    renderPreviewAndEstimate();
+  };
+  $('icoSize').onchange = e => {
+    state.icoSize = +e.target.value;
+    renderPreviewAndEstimate();
+  };
+
+  // Couleur de fond & transparence
+  $('bgPick').oninput = e => {
+    state.bgColor = e.target.value.toUpperCase();
+    $('bgHex').value = state.bgColor;
+    renderPreviewAndEstimate();
+  };
+  $('bgHex').oninput = e => {
+    let s = e.target.value.trim();
+    if (s && s[0] !== '#') s = '#' + s;
+    if (s.length === 4 && /^#[0-9a-f]{3}$/i.test(s)) {
+      s = '#' + [...s.slice(1)].map(c => c + c).join('');
+    }
+    if (hexOk(s)) {
+      state.bgColor = s.toUpperCase();
+      $('bgPick').value = state.bgColor;
+      renderPreviewAndEstimate();
+    }
+  };
+  $('forceBg').onchange = e => {
+    state.forceBg = e.target.checked;
+    renderPreviewAndEstimate();
+  };
+
+  // Redimensionnement
+  $('enableResize').onchange = e => {
+    state.enableResize = e.target.checked;
+    $('resizeControls').style.opacity = state.enableResize ? '1' : '.45';
+    $('resizeControls').style.pointerEvents = state.enableResize ? 'auto' : 'none';
+    if (state.enableResize) syncResizeInputsFromActive();
+    renderPreviewAndEstimate();
+  };
+
+  $('scale').oninput = e => {
+    state.scale = +e.target.value;
+    $('o_scale').textContent = state.scale + '%';
+    syncResizeInputsFromActive();
+    renderPreviewAndEstimate();
+  };
+  $('scale').previousElementSibling.ondblclick = () => {
+    state.scale = 100;
+    $('scale').value = 100;
+    $('o_scale').textContent = '100%';
+    syncResizeInputsFromActive();
+    renderPreviewAndEstimate();
+  };
+
+  $('resW').oninput = e => {
+    const item = getActiveItem();
+    const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+    state.resW = val;
+    if (item && state.keepRatio) {
+      const rotDims = getRotatedDims(item);
+      state.resH = Math.max(1, Math.round((val / rotDims.w) * rotDims.h));
+      $('resH').value = state.resH;
+      state.scale = Math.max(10, Math.min(200, Math.round((val / rotDims.w) * 100)));
+      $('scale').value = state.scale;
+      $('o_scale').textContent = state.scale + '%';
+    }
+    renderPreviewAndEstimate();
+  };
+
+  $('resH').oninput = e => {
+    const item = getActiveItem();
+    const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+    state.resH = val;
+    if (item && state.keepRatio) {
+      const rotDims = getRotatedDims(item);
+      state.resW = Math.max(1, Math.round((val / rotDims.h) * rotDims.w));
+      $('resW').value = state.resW;
+      state.scale = Math.max(10, Math.min(200, Math.round((val / rotDims.h) * 100)));
+      $('scale').value = state.scale;
+      $('o_scale').textContent = state.scale + '%';
+    }
+    renderPreviewAndEstimate();
+  };
+
+  $('keepRatio').onchange = e => {
+    state.keepRatio = e.target.checked;
+    if (state.keepRatio) {
+      syncResizeInputsFromActive();
+      renderPreviewAndEstimate();
+    }
+  };
+
+  // Transformations (rotation & miroirs)
+  $('rotL').onclick = () => {
+    state.rot = (state.rot + 270) % 360;
+    syncResizeInputsFromActive();
+    updateTransformStatus();
+    renderPreviewAndEstimate();
+  };
+  $('rotR').onclick = () => {
+    state.rot = (state.rot + 90) % 360;
+    syncResizeInputsFromActive();
+    updateTransformStatus();
+    renderPreviewAndEstimate();
+  };
+  $('flipH').onclick = () => {
+    state.flipH = !state.flipH;
+    updateTransformStatus();
+    renderPreviewAndEstimate();
+  };
+  $('flipV').onclick = () => {
+    state.flipV = !state.flipV;
+    updateTransformStatus();
+    renderPreviewAndEstimate();
+  };
+
+  // Actions principales
+  $('download').onclick = downloadCurrent;
+  $('downloadZip').onclick = downloadAllZip;
+  $('copyB64').onclick = copyBase64;
+  $('clearAll').onclick = clearAllItems;
+  $('reset').onclick = resetSettings;
+
+  // Initialisation
+  updateFormatUI();
+  updateTransformStatus();
+})();
+</script>
+</body>
+</html>

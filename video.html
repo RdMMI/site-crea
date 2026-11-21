@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Studio Vidéo</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   DIRECTION ARTISTIQUE — STUDIO NOIR & BLANC (Néo-brutalisme strict)
+   ========================================================================== */
+:root{
+  --bg:#FFFFFF;
+  --ink:#000000;
+  --acc:#D4FF00;
+  color-scheme:light;
+  box-sizing:border-box;
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font:400 14px/1.4 "Bricolage Grotesque",system-ui,sans-serif;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 350px;
+  gap:16px;
+  padding:16px;
+  height:100vh;
+}
+
+/* ==========================================================================
+   COLONNE GAUCHE (MAIN & STAGE)
+   ========================================================================== */
+main{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:0;
+  min-width:0;
+  min-height:0;
+  height:100%;
+  overflow:hidden;
+}
+header{
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+  flex-wrap:wrap;
+  flex-shrink:0;
+}
+h1{font-size:28px;line-height:1;font-weight:800;margin:0;letter-spacing:-.02em}
+header span{color:var(--ink);opacity:.6;font-size:14px}
+h2{font-size:15px;font-weight:800;margin:0 0 4px}
+p{margin:0}
+
+.stage{
+  position:relative;
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  border:2px solid var(--ink);
+  overflow:hidden;
+  padding:16px;
+  background:var(--bg);
+}
+
+/* Barre de saisie d'URL */
+.url-bar{
+  display:flex;
+  gap:8px;
+  align-items:stretch;
+  flex-shrink:0;
+}
+.url-bar input[type="url"]{
+  flex:1;
+  min-width:0;
+  font:inherit;
+  color:var(--ink);
+  background:var(--bg);
+  border:2px solid var(--ink);
+  border-radius:0;
+  padding:10px 12px;
+}
+.url-bar input[type="url"]::placeholder{
+  color:var(--ink);
+  opacity:.45;
+}
+
+/* Zone d'aperçu centrale */
+.view{
+  position:relative;
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  overflow-y:auto;
+  padding:16px;
+  background:var(--bg);
+}
+
+/* État vide */
+.empty-state{
+  width:100%;
+  height:100%;
+  min-height:220px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  text-align:center;
+  outline:2px dashed var(--ink);
+  outline-offset:-14px;
+  padding:32px;
+  background:var(--bg);
+}
+.empty-state strong{font-size:24px;font-weight:800;line-height:1.1}
+.empty-state p{opacity:.7;max-width:440px}
+.platforms{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:6px;
+  margin-top:4px;
+}
+.tag{
+  display:inline-block;
+  border:2px solid var(--ink);
+  padding:3px 8px;
+  font-size:12px;
+  font-weight:600;
+  background:var(--bg);
+}
+.tag.acc{background:var(--acc)}
+.tag.inv{background:var(--ink);color:var(--acc)}
+
+/* Carte de métadonnées après analyse */
+.meta-card{
+  width:100%;
+  max-width:680px;
+  display:grid;
+  grid-template-columns:240px minmax(0,1fr);
+  gap:16px;
+  align-items:start;
+  border:2px solid var(--ink);
+  padding:14px;
+  background:var(--bg);
+}
+.thumb-wrap{
+  width:100%;
+  aspect-ratio:16/9;
+  border:2px solid var(--ink);
+  background:var(--ink);
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.thumb-wrap img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.meta-info{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  min-width:0;
+}
+.meta-title{
+  font-size:18px;
+  font-weight:800;
+  line-height:1.2;
+  word-break:break-word;
+}
+.meta-badges{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  font-variant-numeric:tabular-nums;
+}
+.meta-url{
+  font-size:12px;
+  opacity:.6;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* Zone de chargement / progression néo-brutaliste */
+.loading-box{
+  width:100%;
+  max-width:460px;
+  border:2px solid var(--ink);
+  padding:16px;
+  background:var(--bg);
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  text-align:center;
+}
+.loading-box strong{font-size:16px;font-weight:800}
+.loading-box span{font-size:13px;opacity:.7}
+.prog-track{
+  position:relative;
+  width:100%;
+  height:18px;
+  border:2px solid var(--ink);
+  background:var(--bg);
+  overflow:hidden;
+}
+.prog-bar{
+  position:absolute;
+  top:0;
+  bottom:0;
+  width:42%;
+  background:var(--acc);
+  border-right:2px solid var(--ink);
+  border-left:2px solid var(--ink);
+  animation:indeterminate 1.15s linear infinite;
+}
+@keyframes indeterminate{
+  0%{left:-44%}
+  100%{left:102%}
+}
+
+/* Encart d'erreur */
+.error-box{
+  width:100%;
+  max-width:680px;
+  border:2px solid var(--ink);
+  background:var(--ink);
+  color:var(--acc);
+  padding:12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  flex-shrink:0;
+}
+.error-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.error-box strong{font-size:14px;font-weight:800}
+.error-box pre{
+  margin:0;
+  font:400 12px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;
+  color:var(--bg);
+  white-space:pre-wrap;
+  word-break:break-word;
+  max-height:90px;
+  overflow-y:auto;
+}
+.error-box button{
+  padding:5px 10px;
+  font-size:12px;
+  border-color:var(--acc);
+}
+.error-box button:hover{
+  background:var(--bg);
+  color:var(--ink);
+}
+
+/* Barre d'actions en bas de stage */
+.bar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+  border-top:2px solid var(--ink);
+  padding-top:12px;
+}
+.bar-group{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+
+/* ==========================================================================
+   BOUTONS & CHAMPS (STYLE STUDIO NOIR & BLANC)
+   ========================================================================== */
+button,a.btn,select,input[type="text"]{
+  font:inherit;
+  color:var(--ink);
+  border:2px solid var(--ink);
+  border-radius:0;
+  padding:8px 12px;
+  background:var(--bg);
+  text-decoration:none;
+}
+button,a.btn{
+  background:var(--acc);
+  font-weight:600;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+button:hover,button.pri,a.btn:hover{
+  background:var(--ink);
+  color:var(--acc);
+}
+button.pri{font-weight:800;padding:10px 20px}
+button.pri:hover{background:var(--acc);color:var(--ink)}
+button.sec,a.btn.sec{background:var(--bg);color:var(--ink)}
+button.sec:hover,a.btn.sec:hover{background:var(--ink);color:var(--acc)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button:disabled:hover{background:var(--acc);color:var(--ink)}
+button.pri:disabled:hover{background:var(--ink);color:var(--acc)}
+button.sec:disabled:hover{background:var(--bg);color:var(--ink)}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+
+/* ==========================================================================
+   COLONNE DROITE (ASIDE.PANEL)
+   ========================================================================== */
+aside.panel{
+  position:relative;
+  border:2px solid var(--ink);
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  min-height:0;
+  background:var(--bg);
+  padding:4px 16px 12px;
+  height:100%;
+  overflow-y:auto;
+  scrollbar-width:none;
+}
+aside.panel::-webkit-scrollbar{display:none}
+details{border-bottom:2px solid var(--ink);padding:14px 0}
+details:last-of-type{border-bottom:0}
+summary{
+  cursor:pointer;
+  font-weight:800;
+  font-size:15px;
+  list-style:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-weight:800;font-size:16px;line-height:1}
+details[open] summary::after{content:"−"}
+
+.row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:6px;
+  margin:10px 0 0;
+}
+.row label{color:var(--ink);font-size:13px;font-weight:600}
+select{width:100%;cursor:pointer;text-overflow:ellipsis}
+
+/* Grille 2x2 de sélection rapide de qualité */
+.qual-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:10px;
+}
+.qual-grid button{
+  background:var(--acc);
+  color:var(--ink);
+  font-weight:600;
+  padding:8px 6px;
+  font-size:13px;
+}
+.qual-grid button:hover,
+.qual-grid button.active{
+  background:var(--ink);
+  color:var(--acc);
+  font-weight:800;
+}
+
+/* Encart d'information conteneur MP4 */
+.fmt-box{
+  margin-top:10px;
+  border:2px solid var(--ink);
+  padding:8px 10px;
+  background:var(--bg);
+  font-size:12px;
+  line-height:1.35;
+}
+.fmt-box strong{
+  display:block;
+  font-size:13px;
+  font-weight:800;
+  margin-bottom:2px;
+}
+
+/* Switch personnalisé (.sw identique à Studio Noir & Blanc) */
+.sw{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:12px 0 0;
+  cursor:pointer;
+  font-weight:600;
+  font-size:13px;
+  line-height:1.25;
+}
+.sw input{
+  position:absolute;
+  left:0;
+  top:0;
+  width:1px;
+  height:1px;
+  opacity:0;
+  margin:0;
+  pointer-events:none;
+}
+.sw .t{
+  width:42px;
+  height:24px;
+  border:2px solid var(--ink);
+  background:var(--bg);
+  position:relative;
+  flex:none;
+}
+.sw .t::after{
+  content:"";
+  position:absolute;
+  top:2px;
+  left:2px;
+  width:16px;
+  height:16px;
+  background:var(--ink);
+  transition:transform .12s;
+}
+.sw input:checked+.t{background:var(--acc)}
+.sw input:checked+.t::after{transform:translateX(18px)}
+.sw input:focus-visible+.t{outline:3px solid var(--ink);outline-offset:2px}
+
+/* Historique récent */
+.hist-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:10px;
+}
+.hist-item{
+  width:100%;
+  text-align:left;
+  justify-content:flex-start;
+  background:var(--bg);
+  color:var(--ink);
+  padding:6px 8px;
+  font-size:13px;
+  gap:8px;
+}
+.hist-item:hover{background:var(--acc);color:var(--ink)}
+.hist-thumb{
+  width:44px;
+  height:26px;
+  border:2px solid var(--ink);
+  background:var(--ink);
+  object-fit:cover;
+  flex-shrink:0;
+  display:block;
+}
+.hist-title{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  min-width:0;
+  flex:1;
+}
+.hist-badge{
+  font-size:11px;
+  font-weight:800;
+  background:var(--ink);
+  color:var(--acc);
+  padding:1px 5px;
+  flex-shrink:0;
+}
+.hist-empty{
+  font-size:13px;
+  opacity:.6;
+  margin-top:10px;
+}
+#clearHist{
+  width:100%;
+  margin-top:8px;
+  font-size:13px;
+  padding:6px 8px;
+}
+
+/* Serveur Backend & pastille de statut */
+.api-col{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:10px;
+}
+.api-col input[type="text"]{
+  width:100%;
+  min-width:0;
+  padding:7px 8px;
+  font-size:13px;
+}
+.api-col button{
+  width:100%;
+  padding:7px 10px;
+  font-size:13px;
+}
+.status-line{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:10px;
+  font-size:13px;
+  font-weight:600;
+}
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border:2px solid var(--ink);
+  padding:2px 8px;
+  font-size:12px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+.pill::before{
+  content:"";
+  width:8px;
+  height:8px;
+  border:2px solid var(--ink);
+  background:var(--ink);
+}
+.pill.online{background:var(--acc);color:var(--ink)}
+.pill.offline{background:var(--ink);color:var(--bg)}
+.pill.offline::before{background:var(--bg);border-color:var(--bg)}
+.pill.checking{background:var(--bg);color:var(--ink)}
+
+small{color:var(--ink);opacity:.7;font-size:12px;margin-top:8px;display:block}
+.hidden{display:none!important}
+
+/* Toast de notification non bloquant */
+#toast{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%) translateY(16px);
+  background:var(--ink);
+  color:var(--acc);
+  border:2px solid var(--ink);
+  padding:8px 14px;
+  font-weight:800;
+  font-size:13px;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .15s,transform .15s;
+  z-index:99;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ==========================================================================
+   RESPONSIVE (< 860px)
+   ========================================================================== */
+@media(max-width:860px){
+  html,body{overflow:auto;height:auto}
+  body{
+    grid-template-columns:1fr;
+    overflow:auto;
+    height:auto;
+    padding:12px;
+  }
+  main{height:auto;overflow:visible}
+  .stage{min-height:420px;padding:12px}
+  .url-bar{flex-wrap:wrap}
+  .url-bar input[type="url"]{flex:1 1 100%}
+  .url-bar button{flex:1}
+  .meta-card{grid-template-columns:1fr}
+  aside.panel{height:auto;overflow:visible}
+}
+</style>
+</head>
+<body>
+
+<main>
+  <header>
+    <h1>Studio Vidéo</h1>
+    <span>Collez un lien, choisissez la qualité, téléchargez en MP4.</span>
+  </header>
+
+  <section class="stage">
+    <!-- Barre de saisie d'URL -->
+    <div class="url-bar">
+      <input
+        type="url"
+        id="urlInput"
+        placeholder="https://www.youtube.com/watch?v=... ou TikTok, Instagram, X..."
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Lien de la vidéo"
+      >
+      <button type="button" id="pasteBtn">Coller</button>
+      <button type="button" id="analyzeBtn" class="pri">Analyser</button>
+    </div>
+
+    <!-- Zone d'aperçu centrale (.view) -->
+    <div class="view" id="view">
+      <!-- 1. État vide -->
+      <div class="empty-state" id="emptyState">
+        <strong>Collez un lien vidéo ici</strong>
+        <p>Appuyez sur <b>Ctrl+V</b> n’importe où sur la page ou saisissez une URL ci-dessus pour prévisualiser et télécharger en MP4.</p>
+        <div class="platforms">
+          <span class="tag">YouTube</span>
+          <span class="tag">TikTok</span>
+          <span class="tag">Instagram</span>
+          <span class="tag">X / Twitter</span>
+          <span class="tag">Twitch</span>
+          <span class="tag">Vimeo</span>
+          <span class="tag">Reddit</span>
+        </div>
+      </div>
+
+      <!-- 2. Carte vidéo analysée -->
+      <article class="meta-card hidden" id="metaCard">
+        <div class="thumb-wrap">
+          <img
+            id="metaThumb"
+            src=""
+            alt="Miniature de la vidéo"
+            onerror="this.onerror=null;this.src='https://placehold.co/480x270/000000/D4FF00?text=VIDEO';"
+          >
+        </div>
+        <div class="meta-info">
+          <div class="meta-title" id="metaTitle">Sans titre</div>
+          <div class="meta-badges">
+            <span class="tag inv" id="metaQualBadge">MP4 · MAX</span>
+            <span class="tag acc" id="metaDuration">00:00</span>
+            <span class="tag" id="metaUploader">@auteur</span>
+          </div>
+          <div class="meta-url" id="metaUrl"></div>
+        </div>
+      </article>
+
+      <!-- 3. État chargement / transfert -->
+      <div class="loading-box hidden" id="loadingBox" aria-live="polite">
+        <strong id="loadingTitle">Analyse en cours…</strong>
+        <div class="prog-track"><div class="prog-bar"></div></div>
+        <span id="loadingSub">Le serveur récupère les informations de la vidéo.</span>
+      </div>
+
+      <!-- 4. Zone d'erreur -->
+      <div class="error-box hidden" id="errorBox" role="alert">
+        <div class="error-head">
+          <strong id="errorMsg">Erreur</strong>
+          <button type="button" id="retryBtn">Réessayer</button>
+        </div>
+        <pre id="errorDetails" class="hidden"></pre>
+      </div>
+    </div>
+
+    <!-- Barre d'actions en bas -->
+    <div class="bar">
+      <!-- <a href="index.html" class="btn sec">← Hub</a> -->
+       <p> </p>
+      <div class="bar-group">
+        <button type="button" id="clearBtn" class="sec">Effacer</button>
+        <button type="button" id="downloadBtn" class="pri" disabled>Télécharger la vidéo (MP4)</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<aside class="panel">
+  <!-- 1. Qualité vidéo -->
+  <details open>
+    <summary>Qualité vidéo</summary>
+    <div class="qual-grid" id="qualGrid" role="group" aria-label="Qualité vidéo">
+      <button type="button" data-q="best" class="active" aria-pressed="true">Maximale</button>
+      <button type="button" data-q="1080" aria-pressed="false">1080p HD</button>
+      <button type="button" data-q="720" aria-pressed="false">720p</button>
+      <button type="button" data-q="480" aria-pressed="false">480p</button>
+    </div>
+
+    <div class="fmt-box">
+      <strong>Conteneur de sortie : MP4</strong>
+      H.264 / AAC fusionné automatiquement via yt-dlp + ffmpeg.
+    </div>
+
+    <label class="sw">
+      <input type="checkbox" id="directDl">
+      <span class="t"></span>
+      Téléchargement direct sans prévisualisation
+    </label>
+  </details>
+
+  <!-- 2. Serveur Backend -->
+  <details open>
+    <summary>Serveur Backend</summary>
+    <div class="status-line">
+      <span>Statut :</span>
+      <span class="pill checking" id="apiStatus">Test…</span>
+    </div>
+    <div class="api-col">
+      <input type="text" id="apiInput" placeholder="http://localhost:3000" spellcheck="false" aria-label="URL du serveur backend">
+      <button type="button" id="testApiBtn">Tester la connexion</button>
+    </div>
+    <small>Le serveur tourne en local sur le port 3000 (Docker) ou sur votre instance Render.</small>
+  </details>
+
+  <!-- 3. Historique récent -->
+  <details open>
+    <summary>Historique récent</summary>
+    <div id="histList" class="hist-list"></div>
+    <button type="button" id="clearHist" class="sec hidden">Vider l’historique</button>
+  </details>
+</aside>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // === CONSTANTES & CLÉS LOCALSTORAGE ===
+  const DEFAULT_API = 'http://localhost:3000';
+  const STORAGE_API_KEY = 'crea_api_url';
+  const STORAGE_HIST_KEY = 'crea_video_history';
+  const MAX_HISTORY = 6;
+
+  const QUALITY_LABELS = {
+    best: 'MAX',
+    '1080': '1080P',
+    '720': '720P',
+    '480': '480P'
+  };
+
+  const $ = id => document.getElementById(id);
+
+  // === ÉTAT DE L'APPLICATION ===
+  const state = {
+    apiBase: normalizeApiUrl(localStorage.getItem(STORAGE_API_KEY) || DEFAULT_API),
+    quality: 'best',      // 'best' | '1080' | '720' | '480'
+    busy: false,
+    lastAction: 'analyze', // 'analyze' | 'download' (pour le bouton Réessayer)
+    currentInfo: null,    // { url, title, thumbnail, duration, uploader }
+    history: loadHistory()
+  };
+
+  // === UTILITAIRES ===
+  function normalizeApiUrl(raw) {
+    const cleaned = (raw || '').trim().replace(/\/+$/, '');
+    return cleaned || DEFAULT_API;
+  }
+
+  function isValidUrl(raw) {
+    try {
+      const u = new URL((raw || '').trim());
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  function extractDomain(raw) {
+    try {
+      return new URL(raw).hostname.replace(/^www\./, '');
+    } catch {
+      return 'video';
+    }
+  }
+
+  function formatDuration(sec) {
+    const total = Math.max(0, Math.floor(Number(sec) || 0));
+    if (!total) return 'Durée inconnue';
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  }
+
+  function formatUploader(name) {
+    const clean = (name || '').trim();
+    if (!clean) return '@inconnu';
+    return clean.startsWith('@') ? clean : '@' + clean;
+  }
+
+  function sanitizeFilename(name) {
+    return (name || 'video')
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+      .replace(/\s+/g, '_')
+      .slice(0, 80) || 'video';
+  }
+
+  function parseFilenameFromDisposition(headerVal) {
+    if (!headerVal) return null;
+    const utf8Match = headerVal.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+    if (utf8Match && utf8Match[1]) {
+      try {
+        return decodeURIComponent(utf8Match[1].trim());
+      } catch {
+        return utf8Match[1].trim();
+      }
+    }
+    const asciiMatch = headerVal.match(/filename\s*=\s*"?([^";]+)"?/i);
+    return asciiMatch && asciiMatch[1] ? asciiMatch[1].trim() : null;
+  }
+
+  let toastTimer = 0;
+  function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  // === SYNCHRONISATION DES BOUTONS & BADGE DE QUALITÉ ===
+  function updateActionButtons() {
+    const valid = isValidUrl($('urlInput').value);
+    $('analyzeBtn').disabled = state.busy;
+    $('pasteBtn').disabled = state.busy;
+    $('clearBtn').disabled = state.busy;
+    $('downloadBtn').disabled = state.busy || !valid;
+    if (!state.busy) {
+      $('downloadBtn').textContent = 'Télécharger la vidéo (MP4)';
+    }
+  }
+
+  function updateQualityBadge() {
+    $('metaQualBadge').textContent = `MP4 · ${QUALITY_LABELS[state.quality] || 'MAX'}`;
+  }
+
+  function setQuality(q) {
+    if (!QUALITY_LABELS[q]) return;
+    state.quality = q;
+    document.querySelectorAll('#qualGrid button').forEach(btn => {
+      const active = btn.dataset.q === q;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+    updateQualityBadge();
+  }
+
+  // === ÉTATS VISUELS DE LA ZONE .view ===
+  function setBusy(busy, title = '', sub = '', isDownloading = false) {
+    state.busy = busy;
+    updateActionButtons();
+
+    if (busy) {
+      if (isDownloading) {
+        $('downloadBtn').textContent = 'Téléchargement en cours…';
+      }
+      $('emptyState').classList.add('hidden');
+      $('metaCard').classList.add('hidden');
+      $('errorBox').classList.add('hidden');
+      $('loadingTitle').textContent = title;
+      $('loadingSub').textContent = sub;
+      $('loadingBox').classList.remove('hidden');
+    } else {
+      $('loadingBox').classList.add('hidden');
+    }
+  }
+
+  function showError(msg, details = '') {
+    $('loadingBox').classList.add('hidden');
+    if (state.currentInfo) {
+      $('metaCard').classList.remove('hidden');
+      $('emptyState').classList.add('hidden');
+    } else {
+      $('metaCard').classList.add('hidden');
+      $('emptyState').classList.add('hidden');
+    }
+    $('errorMsg').textContent = msg;
+    const detEl = $('errorDetails');
+    if (details) {
+      detEl.textContent = details;
+      detEl.classList.remove('hidden');
+    } else {
+      detEl.textContent = '';
+      detEl.classList.add('hidden');
+    }
+    $('errorBox').classList.remove('hidden');
+  }
+
+  function clearError() {
+    $('errorBox').classList.add('hidden');
+  }
+
+  function showMetadata(info) {
+    state.currentInfo = info;
+    $('emptyState').classList.add('hidden');
+    $('loadingBox').classList.add('hidden');
+    clearError();
+
+    $('metaThumb').src = info.thumbnail || 'https://placehold.co/480x270/000000/D4FF00?text=VIDEO';
+    $('metaTitle').textContent = info.title || 'Sans titre';
+    $('metaDuration').textContent = formatDuration(info.duration);
+    $('metaUploader').textContent = formatUploader(info.uploader);
+    $('metaUrl').textContent = info.url;
+    updateQualityBadge();
+    $('metaCard').classList.remove('hidden');
+  }
+
+  function resetStage() {
+    if (state.busy) return;
+    $('urlInput').value = '';
+    state.currentInfo = null;
+    clearError();
+    $('metaCard').classList.add('hidden');
+    $('loadingBox').classList.add('hidden');
+    $('emptyState').classList.remove('hidden');
+    updateActionButtons();
+    $('urlInput').focus();
+  }
+
+  // === HISTORIQUE RÉCENT (crea_video_history, MAX 6) ===
+  function loadHistory() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_HIST_KEY) || '[]');
+      return Array.isArray(parsed) ? parsed.slice(0, MAX_HISTORY) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveHistory() {
+    try {
+      localStorage.setItem(STORAGE_HIST_KEY, JSON.stringify(state.history));
+    } catch {
+      // Ignore les erreurs de quota localStorage
+    }
+  }
+
+  function addToHistory(url, title, thumbnail, quality) {
+    const cleanTitle = (title || extractDomain(url)).trim();
+    const badge = QUALITY_LABELS[quality] || 'MP4';
+    state.history = state.history.filter(item => item.url !== url);
+    state.history.unshift({
+      url,
+      title: cleanTitle,
+      thumbnail: thumbnail || '',
+      badge
+    });
+    if (state.history.length > MAX_HISTORY) state.history.length = MAX_HISTORY;
+    saveHistory();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list = $('histList');
+    const clearBtn = $('clearHist');
+    list.innerHTML = '';
+
+    if (!state.history.length) {
+      const empty = document.createElement('div');
+      empty.className = 'hist-empty';
+      empty.textContent = 'Aucune vidéo récente.';
+      list.appendChild(empty);
+      clearBtn.classList.add('hidden');
+      return;
+    }
+
+    clearBtn.classList.remove('hidden');
+    state.history.forEach(item => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'hist-item';
+      btn.title = item.url;
+
+      if (item.thumbnail) {
+        const img = document.createElement('img');
+        img.className = 'hist-thumb';
+        img.src = item.thumbnail;
+        img.alt = '';
+        img.onerror = function() { this.style.display = 'none'; };
+        btn.appendChild(img);
+      }
+
+      const t = document.createElement('span');
+      t.className = 'hist-title';
+      t.textContent = item.title;
+
+      const b = document.createElement('span');
+      b.className = 'hist-badge';
+      b.textContent = item.badge || 'MP4';
+
+      btn.append(t, b);
+      btn.onclick = () => {
+        if (state.busy) return;
+        $('urlInput').value = item.url;
+        updateActionButtons();
+        analyzeUrl();
+      };
+      list.appendChild(btn);
+    });
+  }
+
+  // === VÉRIFICATION DU SERVEUR BACKEND (/health) ===
+  async function checkBackendHealth(showFeedback = false) {
+    const pill = $('apiStatus');
+    pill.className = 'pill checking';
+    pill.textContent = 'Test…';
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+
+    try {
+      const res = await fetch(`${state.apiBase}/health`, { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (data && data.ok) {
+        pill.className = 'pill online';
+        pill.textContent = 'EN LIGNE';
+        if (showFeedback) showToast('Connexion réussie : serveur en ligne !');
+        return true;
+      }
+      throw new Error('Réponse invalide');
+    } catch {
+      clearTimeout(timer);
+      pill.className = 'pill offline';
+      pill.textContent = 'HORS LIGNE';
+      if (showFeedback) showToast('Serveur hors ligne ou inaccessible.');
+      return false;
+    }
+  }
+
+  // === ANALYSE VIDÉO (/api/info) ===
+  async function analyzeUrl() {
+    if (state.busy) return;
+    const url = $('urlInput').value.trim();
+    if (!isValidUrl(url)) {
+      showError('URL invalide', 'Collez un lien vidéo complet commençant par http:// ou https://');
+      return;
+    }
+
+    state.lastAction = 'analyze';
+    setBusy(true, 'Analyse de la vidéo…', 'Récupération du titre, de la miniature et de la durée.', false);
+
+    try {
+      const res = await fetch(`${state.apiBase}/api/info?url=${encodeURIComponent(url)}`);
+      if (!res.ok) {
+        let errObj = { error: `Erreur serveur (${res.status})`, details: '' };
+        try {
+          errObj = await res.json();
+        } catch {
+          errObj.details = await res.text();
+        }
+        setBusy(false);
+        showError(errObj.error || 'Impossible d’analyser ce lien.', errObj.details || '');
+        return;
+      }
+
+      const info = await res.json();
+      const meta = {
+        url,
+        title: info.title || 'Sans titre',
+        thumbnail: info.thumbnail || '',
+        duration: info.duration || 0,
+        uploader: info.uploader || ''
+      };
+      setBusy(false);
+      showMetadata(meta);
+      addToHistory(url, meta.title, meta.thumbnail, state.quality);
+    } catch (err) {
+      setBusy(false);
+      showError(
+        'Impossible de contacter le serveur backend.',
+        `Vérifiez que votre serveur tourne bien sur ${state.apiBase} (${err.message}).`
+      );
+    }
+  }
+
+  // === TÉLÉCHARGEMENT MP4 (/api/download?type=video&quality=...) ===
+  async function startDownload() {
+    if (state.busy) return;
+    const url = $('urlInput').value.trim();
+    if (!isValidUrl(url)) {
+      showError('URL invalide', 'Collez un lien vidéo valide avant de lancer le téléchargement.');
+      return;
+    }
+
+    state.lastAction = 'download';
+    const quality = state.quality;
+    const qLabel = QUALITY_LABELS[quality] || 'MAX';
+
+    setBusy(
+      true,
+      `Téléchargement MP4 (${qLabel})…`,
+      'Le serveur télécharge et fusionne la vidéo et l’audio. Patientez quelques instants.',
+      true
+    );
+
+    try {
+      const endpoint = `${state.apiBase}/api/download?url=${encodeURIComponent(url)}&type=video&quality=${encodeURIComponent(quality)}`;
+      const res = await fetch(endpoint);
+
+      if (!res.ok) {
+        let errObj = { error: `Échec du téléchargement (${res.status})`, details: '' };
+        try {
+          errObj = await res.json();
+        } catch {
+          errObj.details = await res.text();
+        }
+        setBusy(false);
+        showError(errObj.error || 'Échec du téléchargement de la vidéo.', errObj.details || '');
+        return;
+      }
+
+      const disp = res.headers.get('Content-Disposition');
+      const hasMatchingInfo = state.currentInfo && state.currentInfo.url === url;
+      const fallbackTitle = hasMatchingInfo ? state.currentInfo.title : extractDomain(url);
+      const filename = parseFilenameFromDisposition(disp) || `${sanitizeFilename(fallbackTitle)}.mp4`;
+
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
+
+      setBusy(false);
+      if (hasMatchingInfo) {
+        $('metaCard').classList.remove('hidden');
+      } else {
+        $('emptyState').classList.remove('hidden');
+      }
+
+      addToHistory(url, fallbackTitle, hasMatchingInfo ? state.currentInfo.thumbnail : '', quality);
+      showToast(`Téléchargement lancé : ${filename}`);
+    } catch (err) {
+      setBusy(false);
+      showError(
+        'Erreur de connexion pendant le téléchargement.',
+        `Vérifiez que votre serveur backend est bien démarré sur ${state.apiBase} (${err.message}).`
+      );
+    }
+  }
+
+  // === ÉVÉNEMENTS ===
+  $('qualGrid').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-q]');
+    if (!btn) return;
+    setQuality(btn.dataset.q);
+  });
+
+  $('urlInput').addEventListener('input', updateActionButtons);
+  $('urlInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if ($('directDl').checked) startDownload();
+      else analyzeUrl();
+    }
+  });
+
+  $('analyzeBtn').onclick = analyzeUrl;
+  $('downloadBtn').onclick = startDownload;
+  $('clearBtn').onclick = resetStage;
+  $('retryBtn').onclick = () => {
+    if (state.lastAction === 'download') startDownload();
+    else analyzeUrl();
+  };
+
+  // Bouton Coller (Clipboard API)
+  $('pasteBtn').onclick = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const txt = (await navigator.clipboard.readText()).trim();
+        if (txt) {
+          $('urlInput').value = txt;
+          updateActionButtons();
+          if (isValidUrl(txt)) analyzeUrl();
+          else showToast('Texte collé.');
+          return;
+        }
+      }
+      showToast('Utilisez Ctrl+V dans le champ URL.');
+      $('urlInput').focus();
+    } catch {
+      showToast('Accès presse-papier bloqué : utilisez Ctrl+V.');
+      $('urlInput').focus();
+    }
+  };
+
+  // Collage global Ctrl+V hors champs texte → colle et lance l'analyse
+  window.addEventListener('paste', e => {
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    const txt = (e.clipboardData && e.clipboardData.getData('text')) || '';
+    if (txt.trim()) {
+      e.preventDefault();
+      $('urlInput').value = txt.trim();
+      updateActionButtons();
+      if (isValidUrl(txt.trim())) analyzeUrl();
+    }
+  });
+
+  // Historique
+  $('clearHist').onclick = () => {
+    state.history = [];
+    saveHistory();
+    renderHistory();
+    showToast('Historique vidé.');
+  };
+
+  // Serveur Backend
+  $('apiInput').value = state.apiBase;
+  function saveApiFromInput() {
+    state.apiBase = normalizeApiUrl($('apiInput').value);
+    $('apiInput').value = state.apiBase;
+    localStorage.setItem(STORAGE_API_KEY, state.apiBase);
+  }
+  $('testApiBtn').onclick = () => {
+    saveApiFromInput();
+    checkBackendHealth(true);
+  };
+  $('apiInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveApiFromInput();
+      checkBackendHealth(true);
+    }
+  });
+
+  // === INITIALISATION ===
+  setQuality('best');
+  updateActionButtons();
+  renderHistory();
+  checkBackendHealth(false);
+})();
+</script>
+</body>
+</html>

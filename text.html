@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Extraction de Texte (OCR)</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+:root{--bg:#FFFFFF;--ink:#000000;--acc:#D4FF00;color-scheme:light;box-sizing:border-box}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font:400 14px/1.4 "Bricolage Grotesque",system-ui,sans-serif;display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px;padding:16px;height:100vh}
+main{display:flex;flex-direction:column;gap:12px;padding:0;min-width:0;min-height:0;height:100%;overflow:hidden}
+header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;flex-shrink:0}
+h1{font-size:28px;line-height:1;font-weight:800;margin:0;letter-spacing:-.02em}
+header span{color:var(--ink);opacity:.6;font-size:14px}
+h2{font-size:15px;font-weight:800;margin:0 0 4px}
+p{margin:0}
+.stage{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid var(--ink);overflow:hidden;padding:12px;background:var(--bg)}
+.view{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+canvas{display:none;max-width:100%;max-height:100%;width:auto;height:auto;touch-action:none;user-select:none;-webkit-touch-callout:none;border:2px solid var(--ink)}
+.view.has canvas{display:block}
+#drop{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;cursor:pointer;background:var(--bg);outline:2px dashed var(--ink);outline-offset:-14px;padding:30px}
+#drop strong{font-size:24px;font-weight:800}
+.view.has #drop{display:none}
+.view.has.over #drop{display:flex;background:var(--acc)}
+.over #drop{background:var(--acc)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0}
+button,select,input[type=text]{font:inherit;color:var(--ink);border:2px solid var(--ink);border-radius:0;padding:8px 12px;background:var(--bg)}
+button{background:var(--acc);font-weight:600;cursor:pointer}
+button:hover,button.pri{background:var(--ink);color:var(--acc)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button:disabled:hover{background:var(--acc);color:var(--ink)}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+aside.panel{border:2px solid var(--ink);display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg);padding:16px;height:100%;overflow-y:auto;scrollbar-width:none;gap:12px}
+aside.panel::-webkit-scrollbar{display:none}
+textarea{width:100%;flex:1;resize:none;font:inherit;color:var(--ink);border:2px solid var(--ink);padding:10px;background:var(--bg);outline:none}
+textarea:focus{outline:3px solid var(--ink);outline-offset:2px}
+small{color:var(--ink);opacity:.7;font-size:12px;display:block}
+#toast{position:fixed;bottom:20px;right:20px;background:var(--ink);color:var(--acc);padding:8px 16px;font-weight:600;border:2px solid var(--ink);display:none;z-index:1000}
+@media(max-width:860px){body{grid-template-columns:1fr;overflow:auto;height:auto;padding:12px}main{height:auto;overflow:visible}aside.panel{border:2px solid var(--ink);height:auto;overflow:visible}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>Extraction de Texte (OCR)</h1><span>Glissez une image pour en extraire tout le texte instantanément.</span></header>
+<section class="stage">
+  <div class="view" id="view">
+    <div id="drop" tabindex="0" role="button" aria-label="Choisir une image">
+      <strong>Glissez une image ici</strong>
+      <span>ou cliquez pour choisir (ou coller avec Ctrl+V)</span>
+    </div>
+    <canvas id="out" hidden></canvas>
+  </div>
+  <div class="bar">
+    <button id="pick">Choisir une image</button>
+    <button id="reset" disabled>Réinitialiser</button>
+  </div>
+  <small id="hint" aria-live="polite">Aucune image chargée.</small>
+  <input type="file" id="file" accept="image/*" hidden>
+</section>
+</main>
+
+<aside class="panel">
+  <h2>Texte extrait</h2>
+  <textarea id="result" placeholder="Le texte détecté apparaîtra ici..." readonly></textarea>
+  <button id="copy" disabled>Copier le texte</button>
+</aside>
+
+<div id="toast">Texte copié !</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let currentImageFile = null;
+const out=$('out'), ctx=out.getContext('2d');
+
+function showToast(msg){
+  const t=$('toast');
+  t.textContent=msg;
+  t.style.display='block';
+  setTimeout(()=>t.style.display='none',1500);
+}
+
+async function processImage(file){
+  if(!file||!file.type.startsWith('image/'))return;
+  currentImageFile = file;
+  
+  // Afficher l'aperçu dans le canvas
+  const url = URL.createObjectURL(file), im = new Image();
+  im.onload = async () => {
+    out.width = im.naturalWidth;
+    out.height = im.naturalHeight;
+    ctx.drawImage(im, 0, 0);
+    URL.revokeObjectURL(url);
+    
+    $('drop').hidden = true;
+    out.hidden = false;
+    $('reset').disabled = false;
+    $('view').classList.add('has');
+    
+    $('result').value = "Analyse et extraction du texte en cours...";
+    $('hint').textContent = "Traitement OCR en cours (cela peut prendre quelques secondes)...";
+    
+    try {
+      const worker = await Tesseract.createWorker('fra+eng');
+      const ret = await worker.recognize(file);
+      $('result').value = ret.data.text.trim() || "Aucun texte détecté dans cette image.";
+      $('copy').disabled = !ret.data.text.trim();
+      $('hint').textContent = "Extraction terminée avec succès.";
+      await worker.terminate();
+    } catch(err) {
+      $('result').value = "Erreur lors de l'extraction du texte.";
+      $('hint').textContent = "Une erreur est survenue.";
+    }
+  };
+  im.src = url;
+}
+
+$('pick').onclick = $('drop').onclick = () => $('file').click();
+$('file').onchange = e => processImage(e.target.files[0]);
+
+const dz = $('view');
+['dragenter','dragover'].forEach(t => dz.addEventListener(t, e => {e.preventDefault(); dz.classList.add('over')}));
+['dragleave','drop'].forEach(t => dz.addEventListener(t, e => {e.preventDefault(); dz.classList.remove('over')}));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  if(e.dataTransfer.files[0]) processImage(e.dataTransfer.files[0]);
+});
+window.addEventListener('paste', e => {
+  const f = [...e.clipboardData.files].find(file => file.type.startsWith('image/'));
+  if(f) processImage(f);
+});
+
+$('reset').onclick = () => {
+  ctx.clearRect(0, 0, out.width, out.height);
+  currentImageFile = null;
+  out.hidden = true;
+  $('drop').hidden = false;
+  $('reset').disabled = true;
+  $('copy').disabled = true;
+  $('view').classList.remove('has');
+  $('result').value = "";
+  $('hint').textContent = "Aucune image chargée.";
+};
+
+$('copy').onclick = () => {
+  const text = $('result').value;
+  if(text){
+    navigator.clipboard.writeText(text);
+    showToast("Texte copié dans le presse-papier !");
+  }
+};
+</script>
+</body>
+</html>

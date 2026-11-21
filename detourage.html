@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Détourage</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFFFFF;
+    --ink:#000000;
+    --acc:#D4FF00;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font:400 14px/1.5 "Bricolage Grotesque",system-ui,sans-serif;
+    min-height:100vh;
+  }
+  main{max-width:1240px;margin:0 auto;padding:40px 20px 60px}
+  h1{
+    font-family:"Bricolage Grotesque",system-ui,sans-serif;
+    font-size:clamp(2rem,6vw,3.4rem);
+    line-height:1.05;
+    margin:0 0 8px;
+    letter-spacing:-.02em;
+    font-weight:800;
+  }
+  .lead{color:var(--ink);opacity:.65;margin:0 0 28px;max-width:56ch}
+
+  /* Zone de dépôt */
+  #drop{
+    border:2px dashed var(--ink);
+    background:var(--bg);
+    border-radius:0;
+    padding:44px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:background .12s;
+  }
+  #drop:hover,#drop.over{background:var(--acc)}
+  #drop strong{display:block;font-size:1.25rem;font-weight:800;margin-bottom:4px}
+  #drop span{color:var(--ink);opacity:.7;font-size:.95rem}
+
+  /* Espace de travail : aperçus à gauche, panneau à droite */
+  .stage{display:none;margin-top:24px}
+  .stage.on{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 280px;
+    gap:16px;
+    align-items:start;
+  }
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:900px){.stage.on{grid-template-columns:1fr}}
+  @media (max-width:700px){.panes{grid-template-columns:1fr}}
+
+  figure{
+    margin:0;
+    background:var(--bg);
+    border:2px solid var(--ink);
+    border-radius:0;
+    padding:10px;
+  }
+  figcaption{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-size:.95rem;
+    font-weight:800;
+    color:var(--ink);
+    margin-bottom:8px;
+  }
+  figcaption .hint{
+    font-size:12px;
+    font-weight:400;
+    opacity:.65;
+  }
+  .frame{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:240px;
+    border-radius:0;
+    overflow:hidden;
+    position:relative;
+  }
+  .frame img,
+  .frame canvas{
+    max-width:100%;
+    max-height:480px;
+    width:auto;
+    height:auto;
+    display:block;
+  }
+  #res{
+    touch-action:none;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  #res.painting{cursor:none}
+  #res[hidden]{display:none}
+  .checker{background:conic-gradient(#e5e5e5 25%,#ffffff 0 50%,#e5e5e5 0 75%,#ffffff 0) 0 0/20px 20px}
+
+  /* Curseur circulaire calibré à la taille réelle du pinceau */
+  #cursor{
+    position:absolute;
+    top:0;
+    left:0;
+    width:24px;
+    height:24px;
+    border-radius:50%;
+    border:2px solid var(--ink);
+    box-shadow:0 0 0 1px var(--acc), inset 0 0 0 1px var(--acc);
+    pointer-events:none;
+    transform:translate(-50%,-50%);
+    display:none;
+    z-index:5;
+  }
+  #cursor.on{display:block}
+
+  /* Overlay de progression */
+  #status{
+    position:absolute;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:10px;
+    background:rgba(255,255,255,.92);
+    color:var(--ink);
+    font-size:.95rem;
+    font-weight:600;
+    text-align:center;
+    padding:12px;
+    z-index:10;
+  }
+  #status.on{display:flex}
+  .bar{
+    width:180px;
+    height:12px;
+    border:2px solid var(--ink);
+    background:var(--bg);
+    border-radius:0;
+    overflow:hidden;
+  }
+  .bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+
+  /* Panneau de contrôle à droite */
+  .controls{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:12px;
+    margin-top:0;
+    background:var(--bg);
+    border:2px solid var(--ink);
+    border-radius:0;
+    padding:14px;
+  }
+  .sec-title{
+    font-size:15px;
+    font-weight:800;
+    margin:0;
+    line-height:1.2;
+  }
+  .brush-sec{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .brush-sec.disabled{
+    opacity:.4;
+    pointer-events:none;
+  }
+  .btn-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .sep{
+    height:2px;
+    background:var(--ink);
+    border:0;
+    margin:2px 0;
+  }
+
+  /* Labels, selects, sliders et switches (DA Studio Noir & Blanc) */
+  label.field{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    font-size:.9rem;
+    font-weight:600;
+    color:var(--ink);
+  }
+  label[hidden]{display:none}
+  .row{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:2px 8px;
+  }
+  .row label{
+    font-size:14px;
+    font-weight:400;
+    color:var(--ink);
+    cursor:default;
+  }
+  .row output{
+    font-variant-numeric:tabular-nums;
+    font-weight:600;
+    font-size:14px;
+  }
+  input[type=range]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:22px;
+    background:transparent;
+    margin:0;
+    cursor:pointer;
+    grid-column:1/-1;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--ink)}
+  input[type=range]::-moz-range-track{height:4px;background:var(--ink)}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:20px;
+    height:20px;
+    margin-top:-8px;
+    background:var(--acc);
+    border:2px solid var(--ink);
+    border-radius:50%;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:16px;
+    height:16px;
+    background:var(--acc);
+    border:2px solid var(--ink);
+    border-radius:50%;
+  }
+
+  /* Switch carré personnalisé */
+  .sw{
+    position:relative;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin:2px 0 0;
+    cursor:pointer;
+    font-weight:600;
+    font-size:13px;
+  }
+  .sw input{
+    position:absolute;
+    left:0;
+    top:0;
+    width:1px;
+    height:1px;
+    opacity:0;
+    margin:0;
+    pointer-events:none;
+  }
+  .sw .t{
+    width:42px;
+    height:24px;
+    border:2px solid var(--ink);
+    background:var(--bg);
+    position:relative;
+    flex:none;
+  }
+  .sw .t::after{
+    content:"";
+    position:absolute;
+    top:2px;
+    left:2px;
+    width:16px;
+    height:16px;
+    background:var(--ink);
+    transition:transform .12s;
+  }
+  .sw input:checked+.t{background:var(--acc)}
+  .sw input:checked+.t::after{transform:translateX(18px)}
+  .sw input:focus-visible+.t{outline:3px solid var(--ink);outline-offset:2px}
+
+  select,input[type=color]{
+    font:inherit;
+    color:var(--ink);
+    background:var(--bg);
+    border:2px solid var(--ink);
+    border-radius:0;
+    padding:6px 8px;
+    height:38px;
+    width:100%;
+    cursor:pointer;
+  }
+  input[type=color]{padding:0}
+
+  /* Boutons */
+  button{
+    font:inherit;
+    font-weight:600;
+    border-radius:0;
+    padding:0 12px;
+    height:38px;
+    width:100%;
+    cursor:pointer;
+    border:2px solid var(--ink);
+    background:var(--acc);
+    color:var(--ink);
+  }
+  button:hover,
+  button.primary,
+  button.active{
+    background:var(--ink);
+    color:var(--acc);
+  }
+  button.primary,
+  button.active{font-weight:800}
+  button.sm{
+    height:34px;
+    font-size:13px;
+    padding:0 8px;
+    background:var(--bg);
+    color:var(--ink);
+  }
+  button.sm:hover{background:var(--ink);color:var(--acc)}
+  button:disabled{opacity:.35;cursor:not-allowed}
+  button:disabled:hover{background:var(--acc);color:var(--ink)}
+  button.sm:disabled:hover{background:var(--bg);color:var(--ink)}
+  button.primary:disabled:hover{background:var(--ink);color:var(--acc)}
+  :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+
+  /* Message d'erreur sur toute la largeur */
+  #err{
+    display:none;
+    grid-column:1/-1;
+    margin-top:0;
+    padding:10px 14px;
+    border:2px solid var(--ink);
+    background:var(--ink);
+    color:var(--acc);
+    font-weight:600;
+  }
+  small{display:block;margin-top:22px;color:var(--ink);opacity:.7;font-size:12px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Détourage</h1>
+  <p class="lead">Déposez une photo : le sujet principal est découpé automatiquement, à la résolution d'origine. Tout se passe dans votre navigateur, l'image n'est envoyée nulle part.</p>
+
+  <div id="drop" tabindex="0" role="button" aria-label="Choisir une image">
+    <strong>Déposez une image ici ou cliquez pour en choisir une</strong>
+    <span>JPEG, PNG ou WebP (ou collez avec Ctrl+V)</span>
+    <input id="file" type="file" accept="image/*" hidden>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="panes">
+      <figure>
+        <figcaption>Original</figcaption>
+        <div class="frame">
+          <img id="orig" alt="Image d'origine">
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>
+          <span>Détourée</span>
+          <span class="hint" id="modeHint"></span>
+        </figcaption>
+        <div class="frame checker" id="resFrame">
+          <canvas id="res" hidden aria-label="Image détourée interactive"></canvas>
+          <div id="cursor" aria-hidden="true"></div>
+          <div id="status">
+            <span id="stxt">Chargement du modèle…</span>
+            <div class="bar"><i id="bar"></i></div>
+          </div>
+        </div>
+      </figure>
+    </div>
+
+    <div class="controls">
+      <!-- Section 1 : Retouche au pinceau -->
+      <div class="brush-sec disabled" id="brushSec">
+        <h2 class="sec-title">Retouche au pinceau</h2>
+
+        <div class="btn-row">
+          <button type="button" id="btnRestore" aria-pressed="false">Restaurer</button>
+          <button type="button" id="btnErase" aria-pressed="false">Effacer</button>
+        </div>
+
+        <div class="row">
+          <label for="bSize">Taille du pinceau</label>
+          <output id="oSize">40 px</output>
+          <input type="range" id="bSize" min="5" max="200" step="1" value="40">
+        </div>
+
+        <div class="row">
+          <label for="bSoft">Douceur</label>
+          <output id="oSoft">30%</output>
+          <input type="range" id="bSoft" min="0" max="100" step="1" value="30">
+        </div>
+
+        <label class="sw">
+          <input type="checkbox" id="ghost" checked>
+          <span class="t"></span>
+          Voir l'original en fond
+        </label>
+
+        <div class="btn-row">
+          <button type="button" id="btnUndo" class="sm" disabled title="Raccourci : Ctrl+Z">Annuler</button>
+          <button type="button" id="btnReset" class="sm" disabled>Réinitialiser</button>
+        </div>
+      </div>
+
+      <hr class="sep">
+
+      <!-- Section 2 : Export d'origine -->
+      <label class="field">Format
+        <select id="fmt">
+          <option value="png">PNG (transparent)</option>
+          <option value="jpeg">JPEG</option>
+        </select>
+      </label>
+
+      <label class="field" id="bgwrap" hidden>Fond du JPEG
+        <input type="color" id="bg" value="#ffffff">
+      </label>
+
+      <button type="button" id="again">Autre image</button>
+      <button type="button" id="dl" class="primary" disabled>Télécharger</button>
+    </div>
+
+    <div id="err" role="alert"></div>
+  </div>
+
+  <small>Le premier détourage télécharge le modèle d'IA (environ 40 Mo), ensuite il est mis en cache. Connexion internet requise.</small>
+</main>
+
+<script type="module">
+import { removeBackground } from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm";
+
+const $ = id => document.getElementById(id);
+
+const drop = $("drop");
+const file = $("file");
+const stage = $("stage");
+const resCanvas = $("res");
+const resCtx = resCanvas.getContext("2d");
+const resFrame = $("resFrame");
+const cursorEl = $("cursor");
+const brushSec = $("brushSec");
+
+// Canvases offscreen à pleine résolution (W x H)
+const origCanvas = document.createElement("canvas");
+const origCtx = origCanvas.getContext("2d");
+
+const maskCanvas = document.createElement("canvas");
+const maskCtx = maskCanvas.getContext("2d", { willReadFrequently: true });
+
+const initMaskCanvas = document.createElement("canvas");
+const initMaskCtx = initMaskCanvas.getContext("2d");
+
+const compCanvas = document.createElement("canvas");
+const compCtx = compCanvas.getContext("2d");
+
+// État de l'application
+let ready = false;
+let baseName = "image";
+let imgW = 0;
+let imgH = 0;
+let origUrl = null;
+
+// État du pinceau : 'restore' | 'erase' | null
+let brushMode = "restore";
+let brushSize = 40;       // diamètre en pixels réels de l'image
+let brushSoft = 30;       // 0 à 100 %
+let isDrawing = false;
+let lastPt = null;
+const MAX_HISTORY = 15;
+let history = [];
+
+// === IMPORT (clic, clavier, drag & drop, Ctrl+V) ===
+drop.onclick = () => file.click();
+drop.onkeydown = e => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    file.click();
+  }
+};
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => {
+  e.preventDefault();
+  drop.classList.remove("over");
+  if (e.dataTransfer.files[0]) handle(e.dataTransfer.files[0]);
+};
+file.onchange = () => { if (file.files[0]) handle(file.files[0]); };
+
+window.addEventListener("paste", e => {
+  const items = e.clipboardData && e.clipboardData.files;
+  if (items && items.length) {
+    const imgFile = [...items].find(f => f.type.startsWith("image/"));
+    if (imgFile) handle(imgFile);
+  }
+});
+
+$("again").onclick = () => {
+  ready = false;
+  history = [];
+  brushSec.classList.add("disabled");
+  cursorEl.classList.remove("on");
+  stage.classList.remove("on");
+  drop.style.display = "";
+  file.value = "";
+  updateHistoryButtons();
+};
+
+$("fmt").onchange = () => {
+  $("bgwrap").hidden = $("fmt").value !== "jpeg";
+};
+
+// === CONTRÔLES DU PINCEAU ===
+function setBrushMode(mode) {
+  // Cliquer sur le bouton déjà actif permet de désactiver le pinceau
+  brushMode = (brushMode === mode) ? null : mode;
+  updateBrushUI();
+}
+
+function updateBrushUI() {
+  const isRes = brushMode === "restore";
+  const isEra = brushMode === "erase";
+  $("btnRestore").classList.toggle("active", isRes);
+  $("btnRestore").setAttribute("aria-pressed", String(isRes));
+  $("btnErase").classList.toggle("active", isEra);
+  $("btnErase").setAttribute("aria-pressed", String(isEra));
+
+  resCanvas.classList.toggle("painting", ready && brushMode !== null);
+  if (!brushMode) cursorEl.classList.remove("on");
+
+  if (!ready) {
+    $("modeHint").textContent = "";
+  } else if (isRes) {
+    $("modeHint").textContent = "Pinceau : Restaurer";
+  } else if (isEra) {
+    $("modeHint").textContent = "Pinceau : Effacer";
+  } else {
+    $("modeHint").textContent = "Pinceau désactivé";
+  }
+}
+
+$("btnRestore").onclick = () => setBrushMode("restore");
+$("btnErase").onclick = () => setBrushMode("erase");
+
+$("bSize").oninput = e => {
+  brushSize = +e.target.value;
+  $("oSize").textContent = brushSize + " px";
+};
+$("bSoft").oninput = e => {
+  brushSoft = +e.target.value;
+  $("oSoft").textContent = brushSoft + "%";
+};
+$("ghost").onchange = () => renderPreview();
+
+// === HISTORIQUE (ANNULER & RÉINITIALISER) ===
+function pushHistory() {
+  if (!ready) return;
+  const snap = maskCtx.getImageData(0, 0, imgW, imgH);
+  history.push(snap);
+  if (history.length > MAX_HISTORY) history.shift();
+  updateHistoryButtons();
+}
+
+function undo() {
+  if (!ready || history.length === 0) return;
+  const prev = history.pop();
+  maskCtx.putImageData(prev, 0, 0);
+  renderPreview();
+  updateHistoryButtons();
+}
+
+function resetMask() {
+  if (!ready) return;
+  pushHistory();
+  maskCtx.globalCompositeOperation = "source-over";
+  maskCtx.clearRect(0, 0, imgW, imgH);
+  maskCtx.drawImage(initMaskCanvas, 0, 0);
+  renderPreview();
+  updateHistoryButtons();
+}
+
+function updateHistoryButtons() {
+  $("btnUndo").disabled = !ready || history.length === 0;
+  $("btnReset").disabled = !ready;
+}
+
+$("btnUndo").onclick = undo;
+$("btnReset").onclick = resetMask;
+
+window.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z") {
+    if (ready && history.length > 0) {
+      e.preventDefault();
+      undo();
+    }
+  }
+});
+
+// === RENDU DE LA COMPOSITION ET DE L'APERÇU ===
+function renderPreview() {
+  if (!ready) return;
+
+  // 1. Composer l'image finale dans compCanvas (origCanvas masqué par maskCanvas)
+  compCtx.globalCompositeOperation = "source-over";
+  compCtx.clearRect(0, 0, imgW, imgH);
+  compCtx.drawImage(origCanvas, 0, 0);
+  compCtx.globalCompositeOperation = "destination-in";
+  compCtx.drawImage(maskCanvas, 0, 0);
+  compCtx.globalCompositeOperation = "source-over";
+
+  // 2. Afficher sur le canvas visible #res (avec fantôme optionnel de l'original)
+  resCtx.clearRect(0, 0, imgW, imgH);
+  if ($("ghost").checked) {
+    resCtx.save();
+    resCtx.globalAlpha = 0.28;
+    resCtx.drawImage(origCanvas, 0, 0);
+    resCtx.restore();
+  }
+  resCtx.drawImage(compCanvas, 0, 0);
+}
+
+// === LOGIQUE DU PINCEAU (POINTER EVENTS + INTERPOLATION) ===
+function getCanvasCoords(e) {
+  const rect = resCanvas.getBoundingClientRect();
+  return {
+    x: ((e.clientX - rect.left) / rect.width) * imgW,
+    y: ((e.clientY - rect.top) / rect.height) * imgH
+  };
+}
+
+function stampBrush(x, y) {
+  const r = brushSize / 2;
+  const soft = brushSoft / 100;
+
+  maskCtx.save();
+  maskCtx.globalCompositeOperation = (brushMode === "restore") ? "source-over" : "destination-out";
+
+  if (soft <= 0.01) {
+    maskCtx.fillStyle = "#ffffff";
+    maskCtx.beginPath();
+    maskCtx.arc(x, y, r, 0, Math.PI * 2);
+    maskCtx.fill();
+  } else {
+    const innerR = Math.max(0, r * (1 - soft));
+    const grad = maskCtx.createRadialGradient(x, y, innerR, x, y, r);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    maskCtx.fillStyle = grad;
+    maskCtx.beginPath();
+    maskCtx.arc(x, y, r, 0, Math.PI * 2);
+    maskCtx.fill();
+  }
+
+  maskCtx.restore();
+}
+
+function paintLine(from, to) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const dist = Math.hypot(dx, dy);
+  const step = Math.max(1, (brushSize / 2) * 0.22);
+
+  if (dist < step) {
+    stampBrush(to.x, to.y);
+    return;
+  }
+  const steps = Math.ceil(dist / step);
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    stampBrush(from.x + dx * t, from.y + dy * t);
+  }
+}
+
+function updateCursor(e) {
+  if (!ready || !brushMode || e.pointerType === "touch") {
+    cursorEl.classList.remove("on");
+    return;
+  }
+  const cRect = resCanvas.getBoundingClientRect();
+  const fRect = resFrame.getBoundingClientRect();
+  const displayDiam = Math.max(4, (brushSize * cRect.width) / imgW);
+
+  cursorEl.style.width = displayDiam + "px";
+  cursorEl.style.height = displayDiam + "px";
+  cursorEl.style.left = (e.clientX - fRect.left) + "px";
+  cursorEl.style.top = (e.clientY - fRect.top) + "px";
+  cursorEl.classList.add("on");
+}
+
+resCanvas.addEventListener("pointerdown", e => {
+  if (!ready || !brushMode || (e.pointerType === "mouse" && e.button !== 0)) return;
+  e.preventDefault();
+  resCanvas.setPointerCapture(e.pointerId);
+  pushHistory();
+  isDrawing = true;
+  const pt = getCanvasCoords(e);
+  lastPt = pt;
+  stampBrush(pt.x, pt.y);
+  renderPreview();
+  updateCursor(e);
+});
+
+resCanvas.addEventListener("pointermove", e => {
+  updateCursor(e);
+  if (!isDrawing) return;
+  e.preventDefault();
+  const pt = getCanvasCoords(e);
+  paintLine(lastPt, pt);
+  lastPt = pt;
+  renderPreview();
+});
+
+function endStroke(e) {
+  if (!isDrawing) return;
+  isDrawing = false;
+  lastPt = null;
+  if (e && resCanvas.hasPointerCapture(e.pointerId)) {
+    resCanvas.releasePointerCapture(e.pointerId);
+  }
+}
+
+resCanvas.addEventListener("pointerup", endStroke);
+resCanvas.addEventListener("pointercancel", endStroke);
+resCanvas.addEventListener("pointerleave", () => {
+  cursorEl.classList.remove("on");
+});
+
+// === TRAITEMENT IA DU DÉTOURAGE ===
+async function handle(f) {
+  if (!f.type.startsWith("image/")) return showErr("Ce fichier n'est pas une image.");
+  $("err").style.display = "none";
+  baseName = f.name.replace(/\.[^.]+$/, "") || "image";
+
+  ready = false;
+  history = [];
+  $("dl").disabled = true;
+  resCanvas.hidden = true;
+  brushSec.classList.add("disabled");
+  cursorEl.classList.remove("on");
+  updateHistoryButtons();
+  updateBrushUI();
+
+  drop.style.display = "none";
+  stage.classList.add("on");
+
+  if (origUrl) URL.revokeObjectURL(origUrl);
+  origUrl = URL.createObjectURL(f);
+  $("orig").src = origUrl;
+
+  setStatus("Chargement du modèle…", 0);
+
+  try {
+    const [origBmp, cutoutBlob] = await Promise.all([
+      createImageBitmap(f),
+      removeBackground(f, {
+        output: { format: "image/png", quality: 1 },
+        progress: (key, cur, total) => {
+          const p = total ? Math.round((cur / total) * 100) : 0;
+          setStatus(key.startsWith("fetch") ? "Téléchargement du modèle…" : "Détourage en cours…", p);
+        }
+      })
+    ]);
+
+    const cutBmp = await createImageBitmap(cutoutBlob);
+    imgW = origBmp.width;
+    imgH = origBmp.height;
+
+    // Dimensionner tous les canvases à la résolution exacte d'origine
+    origCanvas.width = maskCanvas.width = initMaskCanvas.width = compCanvas.width = resCanvas.width = imgW;
+    origCanvas.height = maskCanvas.height = initMaskCanvas.height = compCanvas.height = resCanvas.height = imgH;
+
+    // Stocker l'image d'origine pleine résolution
+    origCtx.clearRect(0, 0, imgW, imgH);
+    origCtx.drawImage(origBmp, 0, 0, imgW, imgH);
+
+    // Initialiser le masque alpha et sa sauvegarde initiale
+    maskCtx.globalCompositeOperation = "source-over";
+    maskCtx.clearRect(0, 0, imgW, imgH);
+    maskCtx.drawImage(cutBmp, 0, 0, imgW, imgH);
+
+    initMaskCtx.clearRect(0, 0, imgW, imgH);
+    initMaskCtx.drawImage(cutBmp, 0, 0, imgW, imgH);
+
+    origBmp.close();
+    cutBmp.close();
+
+    // Adapter une taille de pinceau initiale cohérente avec la résolution de l'image
+    const suggestedSize = Math.max(15, Math.min(120, Math.round(Math.min(imgW, imgH) * 0.06)));
+    brushSize = suggestedSize;
+    $("bSize").value = suggestedSize;
+    $("oSize").textContent = suggestedSize + " px";
+
+    // Activer l'interface de retouche (mode Restaurer prêt par défaut)
+    ready = true;
+    brushMode = "restore";
+    resCanvas.hidden = false;
+    $("status").classList.remove("on");
+    brushSec.classList.remove("disabled");
+    $("dl").disabled = false;
+
+    updateBrushUI();
+    updateHistoryButtons();
+    renderPreview();
+  } catch (e) {
+    console.error(e);
+    $("status").classList.remove("on");
+    showErr("Le détourage a échoué. Vérifiez votre connexion et ouvrez la page via un serveur local (ex. « npx serve » ou l'extension Live Server).");
+  }
+}
+
+function setStatus(t, p) {
+  $("status").classList.add("on");
+  $("stxt").textContent = t;
+  $("bar").style.width = p + "%";
+}
+
+function showErr(m) {
+  const e = $("err");
+  e.textContent = m;
+  e.style.display = "block";
+  stage.classList.add("on");
+}
+
+// === TÉLÉCHARGEMENT (utilise compCanvas, sans jamais inclure l'original fantôme) ===
+$("dl").onclick = async () => {
+  if (!ready) return;
+  const fmt = $("fmt").value;
+  let outBlob;
+
+  if (fmt === "jpeg") {
+    const tmp = document.createElement("canvas");
+    tmp.width = imgW;
+    tmp.height = imgH;
+    const tctx = tmp.getContext("2d");
+    tctx.fillStyle = $("bg").value;
+    tctx.fillRect(0, 0, imgW, imgH);
+    tctx.drawImage(compCanvas, 0, 0);
+    outBlob = await new Promise(r => tmp.toBlob(r, "image/jpeg", 1));
+  } else {
+    outBlob = await new Promise(r => compCanvas.toBlob(r, "image/png"));
+  }
+
+  const url = URL.createObjectURL(outBlob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${baseName}-detoure.${fmt === "jpeg" ? "jpg" : "png"}`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+};
+</script>
+</body>
+</html>

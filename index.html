@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Outils Créa - Hub</title>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap"
+        rel="stylesheet"
+    >
+
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+    <style>
+
+        :root {
+            --bg: #FFFFFF;
+            --ink: #000000;
+            --acc: #D4FF00;
+            color-scheme: light;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+
+            width: 100%;
+            height: 100%;
+
+            background-color: var(--bg);
+
+            font-family: "Bricolage Grotesque", system-ui, sans-serif;
+
+            color: var(--ink);
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        :focus-visible {
+            outline: 3px solid var(--ink);
+            outline-offset: 2px;
+        }
+
+
+        /* ========================================
+           CADRE PRINCIPAL
+        ======================================== */
+
+        .main-container {
+            width: 99vw;
+            height: 98vh;
+
+            border: 2px solid var(--ink);
+            border-radius: 0;
+
+            position: relative;
+
+            display: flex;
+            flex-direction: column;
+
+            box-sizing: border-box;
+
+            padding: 20px;
+
+            overflow: hidden;
+        }
+
+
+        /* ========================================
+           INFORMATIONS HAUT GAUCHE
+        ======================================== */
+
+        .header-info {
+            position: absolute;
+
+            top: 2px;
+            left: 2px;
+
+            z-index: 10;
+
+            font-weight: 800;
+            font-size: 1.1rem;
+            line-height: 1.2;
+        }
+
+
+        /* ========================================
+           LOGO / TITRE IMAGE
+        ======================================== */
+
+        .title-container {
+            width: 100%;
+            height: 230px;
+
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+
+            margin-top: 15px;
+            margin-bottom: 30px;
+
+            padding: 0;
+        }
+
+
+        .title-image {
+            display: block;
+
+            width: min(850px, 70%);
+            max-height: 210px;
+
+            object-fit: contain;
+            object-position: center;
+
+            user-select: none;
+            pointer-events: none;
+        }
+
+
+        /* ========================================
+           GRILLE PRINCIPALE
+        ======================================== */
+
+        .grid-container {
+            display: grid;
+
+            grid-template-columns: repeat(4, 1fr);
+
+            gap: 25px;
+
+            width: 80%;
+
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+
+        /* ========================================
+           BOUTONS DES OUTILS
+        ======================================== */
+
+        .tool-btn {
+            display: flex;
+
+            justify-content: center;
+            align-items: center;
+
+            min-height: 60px;
+
+            border: 2px solid var(--ink);
+            border-radius: 0;
+
+            padding: 15px 10px;
+
+            text-decoration: none;
+
+            color: var(--ink);
+
+            font-weight: 600;
+            font-size: 1rem;
+
+            text-align: center;
+
+            background-color: var(--bg);
+
+            transition:
+                background-color 0.12s ease,
+                color 0.12s ease;
+        }
+
+
+        .tool-btn:not(.empty):hover {
+            background-color: var(--ink);
+            color: var(--acc);
+        }
+
+
+        .tool-btn.empty {
+            pointer-events: none;
+        }
+
+
+        /* ========================================
+           BOUTON DOWNLOAD
+        ======================================== */
+
+        .download-section {
+            width: 100%;
+
+            margin-top: auto;
+            margin-bottom: 35px;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+
+        .download-btn {
+            background-color: var(--acc);
+
+            border: 2px solid var(--ink);
+
+            border-radius: 0;
+
+            padding: 15px 40px;
+
+            display: flex;
+            flex-direction: column;
+
+            justify-content: center;
+            align-items: center;
+
+            cursor: pointer;
+
+            color: var(--ink);
+
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 1.2rem;
+
+            text-decoration: none;
+
+            transition:
+                transform 0.1s ease,
+                background-color 0.12s ease,
+                color 0.12s ease;
+        }
+
+
+        .download-btn:hover {
+            background-color: var(--ink);
+            color: var(--acc);
+        }
+
+
+        .download-btn:active {
+            transform: scale(0.95);
+        }
+
+
+        .download-btn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+
+
+        .download-btn:disabled:hover {
+            background-color: var(--acc);
+            color: var(--ink);
+        }
+
+
+        .download-btn .subtext {
+            font-size: 0.7rem;
+            font-weight: 400;
+            opacity: .75;
+
+            margin-top: 5px;
+        }
+
+
+        /* ========================================
+           STATISTIQUES BAS GAUCHE
+        ======================================== */
+
+        .footer-stats {
+            position: absolute;
+
+            bottom: 2px;
+            left: 2px;
+
+            font-weight: 800;
+            font-size: 1.1rem;
+            line-height: 1.4;
+            font-variant-numeric: tabular-nums;
+        }
+
+
+        /* ========================================
+           RESPONSIVE TABLETTE
+        ======================================== */
+
+        @media (max-width: 900px) {
+
+            .title-container {
+                height: 190px;
+
+                margin-top: 35px;
+                margin-bottom: 25px;
+            }
+
+
+            .title-image {
+                width: 90%;
+                max-height: 180px;
+            }
+
+
+            .grid-container {
+                grid-template-columns: repeat(2, 1fr);
+
+                width: 95%;
+
+                gap: 15px;
+            }
+
+
+            .download-section {
+                margin-bottom: 80px;
+            }
+
+        }
+
+
+        /* ========================================
+           RESPONSIVE MOBILE
+        ======================================== */
+
+        @media (max-width: 520px) {
+
+            html,
+            body {
+                height: auto;
+                min-height: 100%;
+            }
+
+
+            .main-container {
+                width: 98vw;
+
+                height: auto;
+                min-height: 98vh;
+
+                padding: 15px;
+
+                overflow: visible;
+            }
+
+
+            .header-info {
+                font-size: 0.85rem;
+            }
+
+
+            .title-container {
+                height: 150px;
+
+                margin-top: 45px;
+                margin-bottom: 20px;
+            }
+
+
+            .title-image {
+                width: 100%;
+
+                max-height: 140px;
+            }
+
+
+            .grid-container {
+                grid-template-columns: 1fr;
+
+                width: 94%;
+
+                gap: 12px;
+            }
+
+
+            .tool-btn {
+                min-height: 55px;
+            }
+
+
+            .download-section {
+                margin-top: 30px;
+                margin-bottom: 90px;
+            }
+
+
+            .download-btn {
+                padding: 13px 30px;
+
+                font-size: 1rem;
+            }
+
+
+            .footer-stats {
+                bottom: 2px;
+                left: 2px;
+
+                font-size: 0.85rem;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="main-container">
+
+
+    <!-- ========================================
+         INFOS HAUT GAUCHE
+    ========================================= -->
+
+    <div class="header-info">
+        Created by Romain
+        <br>
+        Free for all
+    </div>
+
+
+    <!-- ========================================
+         LOGO
+    ========================================= -->
+
+    <div class="title-container">
+
+        <img
+            src="titre-image.png"
+            alt="Outils Créa"
+            class="title-image"
+        >
+
+    </div>
+
+
+    <!-- ========================================
+         GRILLE DES OUTILS
+    ========================================= -->
+
+    <div class="grid-container">
+        <!-- LIGNE 1 -->
+        <a href="NoirEtBlanc.html" class="tool-btn">noir et blanc</a>
+        <a href="StudioPalette.html" class="tool-btn">palette de couleur</a>
+        <a href="video.html" class="tool-btn">télécharger vidéo</a>
+        <a href="studio_convertisseur.html" class="tool-btn">convertisseur image</a>
+
+        <!-- LIGNE 2 -->
+        <a href="detourage.html" class="tool-btn">détourage</a>
+        <a href="pipette.html" class="tool-btn">couleur pipette</a>
+        <a href="studio_audio.html" class="tool-btn">vidéo en son</a>
+        <a href="" class="tool-btn"></a>
+
+        <!-- LIGNE 3 -->
+        <a href="bitmap-type-studio.html" class="tool-btn">police bitmap</a>
+        <a href="studio_filtres.html" class="tool-btn">effet sur image</a>
+        <a href="text.html" class="tool-btn">texte d'une image</a>
+        <a href="" class="tool-btn"></a>
+
+    </div>
+
+
+    <!-- ========================================
+         BOUTON DOWNLOAD
+    ========================================= -->
+    <div class="download-section">
+
+        <button id="dl-button" class="download-btn" type="button">Download in local
+            <span class="subtext">
+                (just HTML/CSS/JS)
+            </span>
+        </button>
+
+    </div>
+
+
+    <!-- ========================================
+         STATISTIQUES BAS GAUCHE
+    ========================================= -->
+
+    <div class="footer-stats">
+
+        Nombre de téléchargement :
+        <span id="dl-count">0</span>
+
+        <br>
+
+        Nombre de visite :
+        <span id="visit-count">0</span>
+
+    </div>
+
+
+</div>
+
+
+<script>
+
+document.addEventListener('DOMContentLoaded', () => {
+
+
+    /* ========================================
+       COMPTEUR DE VISITES
+    ======================================== */
+
+    let visits = parseInt(
+        localStorage.getItem('crea_visits') || '0',
+        10
+    );
+
+
+    visits++;
+
+
+    localStorage.setItem(
+        'crea_visits',
+        visits
+    );
+
+
+    document
+        .getElementById('visit-count')
+        .innerText = visits;
+
+
+
+    /* ========================================
+       COMPTEUR DE TÉLÉCHARGEMENTS
+    ======================================== */
+
+    let downloads = parseInt(
+        localStorage.getItem('crea_downloads') || '0',
+        10
+    );
+
+
+    document
+        .getElementById('dl-count')
+        .innerText = downloads;
+
+
+
+    /* ========================================
+       BOUTON DOWNLOAD (ZIP DYNAMIQUE)
+    ======================================== */
+
+    const dlBtn = document.getElementById('dl-button');
+    const dlOriginalHTML = dlBtn.innerHTML;
+
+    dlBtn.addEventListener('click', async () => {
+
+        if (location.protocol === 'file:') {
+            alert("Ouvre le site via Live Server, npx serve ou Vercel pour générer le ZIP.");
+            return;
+        }
+
+        if (typeof JSZip === 'undefined') {
+            alert("JSZip n'a pas pu se charger (vérifie ta connexion internet).");
+            return;
+        }
+
+        dlBtn.disabled = true;
+        dlBtn.innerHTML = 'Préparation du ZIP…<span class="subtext">Récupération des fichiers</span>';
+
+        try {
+            const zip = new JSZip();
+            const folder = zip.folder('outils-crea');
+
+            // Récupère automatiquement la page actuelle, le logo et tous les outils de la grille
+            const files = new Set();
+            const currentPage = location.pathname.split('/').pop() || 'index.html';
+            files.add(currentPage);
+
+            const logoSrc = document.querySelector('.title-image')?.getAttribute('src');
+            if (logoSrc) files.add(logoSrc);
+
+            // Inclut le dossier crea-backend
+            files.add('crea-backend/Dockerfile');
+            files.add('crea-backend/package.json');
+            files.add('crea-backend/server.js');
+
+            document.querySelectorAll('.tool-btn').forEach(link => {
+                const href = (link.getAttribute('href') || '').trim();
+                if (href && href !== '#' && !href.startsWith('http')) {
+                    files.add(href);
+                }
+            });
+
+            let added = 0;
+            await Promise.all([...files].map(async (file) => {
+                try {
+                    const res = await fetch(file);
+                    if (!res.ok) return;
+                    const blob = await res.blob();
+                    folder.file(file, blob);
+                    added++;
+                } catch {
+                    // Ignore les fichiers introuvables sans bloquer la création du ZIP
+                }
+            }));
+
+            if (added === 0) throw new Error('Aucun fichier récupéré.');
+
+            dlBtn.innerHTML = 'Compression…<span class="subtext">' + added + ' fichiers</span>';
+            const content = await zip.generateAsync({ type: 'blob' });
+
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(content);
+            a.download = 'outils-crea.zip';
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+
+            downloads++;
+            localStorage.setItem('crea_downloads', downloads);
+            document.getElementById('dl-count').innerText = downloads;
+        } catch (err) {
+            console.error(err);
+            alert("Erreur lors de la création du ZIP.");
+        } finally {
+            dlBtn.disabled = false;
+            dlBtn.innerHTML = dlOriginalHTML;
+        }
+
+    });
+
+
+});
+
+</script>
+
+
+</body>
+
+</html>

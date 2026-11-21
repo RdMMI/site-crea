@@ -1,0 +1,2250 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Studio Audio</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<!-- Encodeur MP3 côté client pour l'éditeur (WAV reste 100 % natif sans dépendance) -->
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js" defer></script>
+<style>
+/* ==========================================================================
+   DIRECTION ARTISTIQUE — STUDIO NOIR & BLANC (Néo-brutalisme strict)
+   ========================================================================== */
+:root{
+  --bg:#FFFFFF;
+  --ink:#000000;
+  --acc:#D4FF00;
+  color-scheme:light;
+  box-sizing:border-box;
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font:400 14px/1.4 "Bricolage Grotesque",system-ui,sans-serif;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 350px;
+  gap:16px;
+  padding:16px;
+  height:100vh;
+}
+
+/* ==========================================================================
+   COLONNE GAUCHE (MAIN, HEADER & STAGE)
+   ========================================================================== */
+main{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:0;
+  min-width:0;
+  min-height:0;
+  height:100%;
+  overflow:hidden;
+}
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  flex-shrink:0;
+}
+.title-group{
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+  flex-wrap:wrap;
+}
+h1{font-size:28px;line-height:1;font-weight:800;margin:0;letter-spacing:-.02em}
+header span{color:var(--ink);opacity:.6;font-size:14px}
+h2{font-size:15px;font-weight:800;margin:0 0 4px}
+p{margin:0}
+
+/* Badge de statut serveur dans le header */
+.status-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border:2px solid var(--ink);
+  padding:4px 10px;
+  font-size:12px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.02em;
+  background:var(--bg);
+  color:var(--ink);
+  flex-shrink:0;
+}
+.status-badge::before{
+  content:"";
+  width:8px;
+  height:8px;
+  border:2px solid var(--ink);
+  background:var(--bg);
+}
+.status-badge.online{
+  background:var(--acc);
+  color:var(--ink);
+}
+.status-badge.online::before{
+  background:var(--ink);
+}
+.status-badge.offline{
+  background:var(--bg);
+  color:var(--ink);
+}
+.status-badge.offline::before{
+  background:var(--bg);
+}
+
+/* Zone principale (.stage) */
+.stage{
+  position:relative;
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  border:2px solid var(--ink);
+  overflow:hidden;
+  padding:12px;
+  background:var(--bg);
+}
+
+/* Barre de lien permanente en haut de .stage */
+.url-bar{
+  display:flex;
+  gap:8px;
+  align-items:stretch;
+  flex-shrink:0;
+  padding-bottom:12px;
+  border-bottom:2px solid var(--ink);
+}
+.url-bar input[type="url"]{
+  flex:1;
+  min-width:0;
+  font:inherit;
+  color:var(--ink);
+  background:var(--bg);
+  border:2px solid var(--ink);
+  border-radius:0;
+  padding:8px 12px;
+}
+.url-bar input[type="url"]::placeholder{
+  color:var(--ink);
+  opacity:.45;
+}
+
+/* Zone d'affichage centrale (.view) — 3 états + overlay drag/loading */
+.view{
+  position:relative;
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  overflow:hidden;
+}
+
+/* État 1 : Zone de dépôt vide */
+#drop{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  text-align:center;
+  cursor:pointer;
+  background:var(--bg);
+  outline:2px dashed var(--ink);
+  outline-offset:-14px;
+  padding:30px;
+  z-index:2;
+}
+#drop strong{font-size:24px;font-weight:800;line-height:1.1}
+#drop .sub{opacity:.7;max-width:480px}
+.view.has-content #drop{display:none}
+.stage.over #drop{
+  display:flex!important;
+  background:var(--acc);
+  z-index:8;
+}
+
+/* Badges communs */
+.tag{
+  display:inline-block;
+  border:2px solid var(--ink);
+  padding:3px 8px;
+  font-size:12px;
+  font-weight:600;
+  background:var(--bg);
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.tag.acc{background:var(--acc);font-weight:800}
+.tag.inv{background:var(--ink);color:var(--acc);font-weight:800}
+.tag.fname{max-width:260px;font-weight:800}
+.platforms{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:6px;
+  margin-top:4px;
+}
+
+/* État 2 : Carte Lien réseau social */
+.link-card-wrap{
+  width:100%;
+  max-width:720px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  overflow-y:auto;
+  max-height:100%;
+  padding:4px 0;
+}
+.meta-card{
+  width:100%;
+  display:grid;
+  grid-template-columns:240px minmax(0,1fr);
+  gap:16px;
+  align-items:start;
+  border:2px solid var(--ink);
+  padding:14px;
+  background:var(--bg);
+}
+.thumb-wrap{
+  width:100%;
+  aspect-ratio:16/9;
+  border:2px solid var(--ink);
+  background:var(--ink);
+  overflow:hidden;
+}
+.thumb-wrap img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.meta-info{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  min-width:0;
+}
+.meta-title{
+  font-size:18px;
+  font-weight:800;
+  line-height:1.2;
+  word-break:break-word;
+}
+.meta-badges{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  font-variant-numeric:tabular-nums;
+}
+.meta-url{
+  font-size:12px;
+  opacity:.6;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.link-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:4px;
+}
+.link-actions button{
+  flex:1 1 180px;
+}
+
+/* État 3 : Éditeur Audio (Forme d'onde) */
+.editor-wrap{
+  width:100%;
+  height:100%;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.badges-bar{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px;
+  flex-shrink:0;
+  font-variant-numeric:tabular-nums;
+}
+.wave-box{
+  position:relative;
+  flex:1;
+  min-height:150px;
+  border:2px solid var(--ink);
+  background:var(--bg);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.wave-canvas-wrap{
+  position:relative;
+  flex:1;
+  min-height:110px;
+  width:100%;
+  cursor:crosshair;
+}
+#waveCanvas{
+  display:block;
+  width:100%;
+  height:100%;
+  touch-action:none;
+  user-select:none;
+}
+.wave-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:6px 10px;
+  border-top:2px solid var(--ink);
+  background:var(--bg);
+  font-size:12px;
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+  flex-wrap:wrap;
+}
+
+/* Overlay de chargement / progression */
+.overlay-box{
+  position:absolute;
+  inset:0;
+  background:rgba(255,255,255,.94);
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  z-index:10;
+  padding:20px;
+}
+.overlay-box.show{display:flex}
+.loading-card{
+  width:100%;
+  max-width:440px;
+  border:2px solid var(--ink);
+  background:var(--bg);
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  text-align:center;
+}
+.loading-card strong{font-size:16px;font-weight:800}
+.loading-card span{font-size:13px;opacity:.75}
+.prog-track{
+  position:relative;
+  width:100%;
+  height:18px;
+  border:2px solid var(--ink);
+  background:var(--bg);
+  overflow:hidden;
+}
+.prog-fill{
+  height:100%;
+  width:0%;
+  background:var(--acc);
+  border-right:2px solid var(--ink);
+  transition:width .08s linear;
+}
+.prog-indet{
+  position:absolute;
+  top:0;
+  bottom:0;
+  width:42%;
+  background:var(--acc);
+  border-left:2px solid var(--ink);
+  border-right:2px solid var(--ink);
+  animation:indeterminate 1.15s linear infinite;
+}
+@keyframes indeterminate{
+  0%{left:-44%}
+  100%{left:102%}
+}
+
+/* Encart d'erreur */
+.error-box{
+  width:100%;
+  max-width:720px;
+  border:2px solid var(--ink);
+  background:var(--ink);
+  color:var(--acc);
+  padding:12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  flex-shrink:0;
+}
+.error-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.error-box strong{font-size:14px;font-weight:800}
+.error-box pre{
+  margin:0;
+  font:400 12px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;
+  color:var(--bg);
+  white-space:pre-wrap;
+  word-break:break-word;
+  max-height:90px;
+  overflow-y:auto;
+}
+.error-box button{
+  padding:5px 10px;
+  font-size:12px;
+  border-color:var(--acc);
+}
+.error-box button:hover{
+  background:var(--bg);
+  color:var(--ink);
+}
+
+/* Barre d'actions en bas de stage */
+.bar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+  border-top:2px solid var(--ink);
+  padding-top:10px;
+}
+.bar-group{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+
+/* ==========================================================================
+   CONTRÔLES GÉNÉRAUX (BOUTONS, SELECTS, CHAMPS)
+   ========================================================================== */
+button,a.btn,select,input[type="text"]{
+  font:inherit;
+  color:var(--ink);
+  border:2px solid var(--ink);
+  border-radius:0;
+  padding:8px 12px;
+  background:var(--bg);
+  text-decoration:none;
+}
+button,a.btn{
+  background:var(--acc);
+  font-weight:600;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+button:hover,button.pri,a.btn:hover{background:var(--ink);color:var(--acc)}
+button.pri{font-weight:800}
+button.pri:hover{background:var(--acc);color:var(--ink)}
+button.sec,a.btn.sec{background:var(--bg);color:var(--ink)}
+button.sec:hover,a.btn.sec:hover{background:var(--ink);color:var(--acc)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button:disabled:hover{background:var(--acc);color:var(--ink)}
+button.pri:disabled:hover{background:var(--ink);color:var(--acc)}
+button.sec:disabled:hover{background:var(--bg);color:var(--ink)}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+
+/* ==========================================================================
+   COLONNE DROITE (ASIDE.PANEL)
+   ========================================================================== */
+aside.panel{
+  position:relative;
+  border:2px solid var(--ink);
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  min-height:0;
+  background:var(--bg);
+  padding:4px 16px 12px;
+  height:100%;
+  overflow-y:auto;
+  scrollbar-width:none;
+}
+aside.panel::-webkit-scrollbar{display:none}
+details{border-bottom:2px solid var(--ink);padding:14px 0}
+details:last-of-type{border-bottom:0}
+summary{
+  cursor:pointer;
+  font-weight:800;
+  font-size:15px;
+  list-style:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-weight:800;font-size:16px;line-height:1}
+details[open] summary::after{content:"−"}
+
+.row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:2px 8px;
+  margin:10px 0 0;
+}
+.row label{color:var(--ink);font-size:14px;font-weight:400;cursor:default}
+.row output{font-variant-numeric:tabular-nums;font-weight:600;font-size:14px}
+select{width:100%;max-width:100%;min-width:0;margin-top:4px;cursor:pointer;grid-column:1/-1}
+
+/* Sliders range personnalisés (track 4px noir, thumb rond 20px jaune bordé noir 2px) */
+input[type=range]{
+  -webkit-appearance:none;
+  appearance:none;
+  width:100%;
+  height:22px;
+  background:transparent;
+  margin:0;
+  cursor:pointer;
+  grid-column:1/-1;
+}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--ink)}
+input[type=range]::-moz-range-track{height:4px;background:var(--ink)}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:20px;
+  height:20px;
+  margin-top:-8px;
+  background:var(--acc);
+  border:2px solid var(--ink);
+  border-radius:50%;
+}
+input[type=range]::-moz-range-thumb{
+  width:16px;
+  height:16px;
+  background:var(--acc);
+  border:2px solid var(--ink);
+  border-radius:50%;
+}
+input[type=range]:disabled{opacity:.35;cursor:not-allowed}
+
+/* Switch personnalisé (.sw identique à Studio Noir & Blanc) */
+.sw{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:12px 0 0;
+  cursor:pointer;
+  font-weight:600;
+  font-size:13px;
+  line-height:1.25;
+}
+.sw input{
+  position:absolute;
+  left:0;
+  top:0;
+  width:1px;
+  height:1px;
+  opacity:0;
+  margin:0;
+  pointer-events:none;
+}
+.sw .t{
+  width:42px;
+  height:24px;
+  border:2px solid var(--ink);
+  background:var(--bg);
+  position:relative;
+  flex:none;
+}
+.sw .t::after{
+  content:"";
+  position:absolute;
+  top:2px;
+  left:2px;
+  width:16px;
+  height:16px;
+  background:var(--ink);
+  transition:transform .12s;
+}
+.sw input:checked+.t{background:var(--acc)}
+.sw input:checked+.t::after{transform:translateX(18px)}
+.sw input:focus-visible+.t{outline:3px solid var(--ink);outline-offset:2px}
+
+/* Grille 3 boutons format (MP3 / WAV / M4A) */
+.fmt-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-top:10px;
+}
+.fmt-grid button{
+  background:var(--acc);
+  color:var(--ink);
+  padding:8px 6px;
+  font-weight:600;
+}
+.fmt-grid button:hover,
+.fmt-grid button.active{
+  background:var(--ink);
+  color:var(--acc);
+  font-weight:800;
+}
+
+.notice{
+  margin-top:10px;
+  padding:8px 10px;
+  border:2px solid var(--ink);
+  background:var(--acc);
+  color:var(--ink);
+  font-size:12px;
+  font-weight:600;
+}
+.notice.dark{
+  background:var(--ink);
+  color:var(--acc);
+}
+
+.full-btn{
+  width:100%;
+  margin-top:10px;
+  padding:7px 10px;
+  font-size:13px;
+}
+
+/* Backend & Historique */
+.api-col{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:10px;
+}
+.api-col input[type="text"]{width:100%;min-width:0;padding:7px 8px;font-size:13px}
+.api-col button{width:100%;padding:7px 10px;font-size:13px}
+
+.hist-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:10px;
+}
+.hist-item{
+  width:100%;
+  text-align:left;
+  justify-content:flex-start;
+  background:var(--bg);
+  color:var(--ink);
+  padding:6px 8px;
+  font-size:13px;
+  gap:8px;
+}
+.hist-item:hover{background:var(--acc);color:var(--ink)}
+.hist-thumb{
+  width:42px;
+  height:26px;
+  border:2px solid var(--ink);
+  background:var(--ink);
+  object-fit:cover;
+  flex-shrink:0;
+  display:block;
+}
+.hist-title{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  min-width:0;
+  flex:1;
+}
+.hist-badge{
+  font-size:11px;
+  font-weight:800;
+  background:var(--ink);
+  color:var(--acc);
+  padding:1px 5px;
+  flex-shrink:0;
+}
+.hist-empty{font-size:13px;opacity:.6;margin-top:10px}
+
+small{color:var(--ink);opacity:.7;font-size:12px;margin-top:8px;display:block}
+.hidden{display:none!important}
+
+/* Toast non bloquant */
+#toast{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%) translateY(16px);
+  background:var(--ink);
+  color:var(--acc);
+  border:2px solid var(--ink);
+  padding:8px 14px;
+  font-weight:800;
+  font-size:13px;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .15s,transform .15s;
+  z-index:99;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ==========================================================================
+   RESPONSIVE (< 860px)
+   ========================================================================== */
+@media(max-width:860px){
+  html,body{overflow:auto;height:auto}
+  body{
+    grid-template-columns:1fr;
+    overflow:auto;
+    height:auto;
+    padding:12px;
+  }
+  main{height:auto;overflow:visible}
+  .stage{min-height:460px}
+  .view{min-height:280px}
+  .url-bar{flex-wrap:wrap}
+  .url-bar input[type="url"]{flex:1 1 100%}
+  .url-bar button{flex:1}
+  .meta-card{grid-template-columns:1fr}
+  .wave-box{min-height:180px}
+  aside.panel{height:auto;overflow:visible}
+}
+</style>
+</head>
+<body>
+
+<main>
+  <header>
+    <div class="title-group">
+      <h1>Studio Audio</h1>
+      <span>Extrayez le son d’une vidéo locale ou d’un lien YouTube / réseaux sociaux.</span>
+    </div>
+    <span class="status-badge" id="serverBadge" title="Statut du serveur backend pour les liens">TEST…</span>
+  </header>
+
+  <section class="stage" id="stage">
+    <!-- Barre de lien toujours visible en haut de .stage -->
+    <div class="url-bar">
+      <input
+        type="url"
+        id="urlInput"
+        placeholder="Collez un lien YouTube, TikTok, Instagram, X, SoundCloud…"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Lien vidéo ou audio"
+      >
+      <button type="button" id="pasteBtn">Coller</button>
+      <button type="button" id="loadLinkBtn" class="pri">Charger le lien</button>
+    </div>
+
+    <!-- Zone principale (.view) : 3 états (Vide / Lien / Éditeur Audio) -->
+    <div class="view" id="view">
+      <!-- ÉTAT 1 : Zone de dépôt vide -->
+      <div id="drop" tabindex="0" role="button" aria-label="Choisir une vidéo ou un fichier audio">
+        <strong>Glissez une vidéo ou un audio ici</strong>
+        <span class="sub">MP4, WebM, MOV, MKV, MP3, WAV… ou collez un lien YouTube / réseau social ci-dessus</span>
+        <div class="platforms">
+          <span class="tag acc">Fichier local 100 % navigateur</span>
+          <span class="tag">YouTube</span>
+          <span class="tag">TikTok</span>
+          <span class="tag">Instagram</span>
+          <span class="tag">X / Twitter</span>
+          <span class="tag">SoundCloud</span>
+        </div>
+      </div>
+
+      <!-- ÉTAT 2 : Aperçu Lien réseau social -->
+      <div class="link-card-wrap hidden" id="linkView">
+        <article class="meta-card">
+          <div class="thumb-wrap">
+            <img
+              id="metaThumb"
+              src=""
+              alt="Miniature du média"
+              onerror="this.onerror=null;this.src='https://placehold.co/480x270/000000/D4FF00?text=AUDIO';"
+            >
+          </div>
+          <div class="meta-info">
+            <div class="meta-title" id="metaTitle">Sans titre</div>
+            <div class="meta-badges">
+              <span class="tag inv" id="metaPlatform">YOUTUBE</span>
+              <span class="tag acc" id="metaDuration">00:00</span>
+              <span class="tag" id="metaUploader">@auteur</span>
+              <span class="tag" id="metaFmtTag">MP3</span>
+            </div>
+            <div class="meta-url" id="metaUrl"></div>
+            <div class="link-actions">
+              <button type="button" id="dlLinkAudioBtn" class="pri">Télécharger l’audio</button>
+              <button type="button" id="editWaveBtn">Éditer la forme d’onde</button>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <!-- ÉTAT 3 : Éditeur Audio (Fichier local ou Lien ouvert dans l'éditeur) -->
+      <div class="editor-wrap hidden" id="editorView">
+        <div class="badges-bar">
+          <span class="tag fname" id="edName">fichier.mp4</span>
+          <span class="tag inv" id="edTotalDur">00:00.0</span>
+          <span class="tag acc" id="edSelDur">Sélection : 00:00.0</span>
+          <span class="tag" id="edRateCh">44.1 kHz · Stéréo</span>
+          <span class="tag" id="edEstSize">~0 Ko</span>
+        </div>
+
+        <div class="wave-box">
+          <div class="wave-canvas-wrap" id="waveWrap" title="Cliquez ou glissez pour déplacer la tête de lecture">
+            <canvas id="waveCanvas"></canvas>
+          </div>
+          <div class="wave-footer">
+            <span>Lecture : <strong id="playTime">00:00.0</strong></span>
+            <span>Zone : <strong id="selRange">00:00.0 → 00:00.0</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bloc d'erreur avec bouton Réessayer -->
+      <div class="error-box hidden" id="errorBox" role="alert">
+        <div class="error-head">
+          <strong id="errorMsg">Erreur</strong>
+          <button type="button" id="retryBtn">Réessayer</button>
+        </div>
+        <pre id="errorDetails" class="hidden"></pre>
+      </div>
+
+      <!-- Overlay de chargement / encodage -->
+      <div class="overlay-box" id="loaderOverlay" aria-live="polite">
+        <div class="loading-card">
+          <strong id="loaderTitle">Chargement…</strong>
+          <div class="prog-track">
+            <div class="prog-fill hidden" id="progFill"></div>
+            <div class="prog-indet" id="progIndet"></div>
+          </div>
+          <span id="loaderSub">Veuillez patienter.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barre de contrôle en bas de .stage -->
+    <div class="bar">
+      <div class="bar-group">
+        <!-- <a href="index.html" class="btn sec">← Hub</a> -->
+        <button type="button" id="pickFileBtn" class="sec">Choisir un fichier</button>
+        <button type="button" id="playBtn" disabled title="Raccourci : Espace">▶ Lecture</button>
+        <button type="button" id="resetBtn" class="sec" disabled>Réinitialiser</button>
+      </div>
+      <button type="button" id="exportBtn" class="pri" disabled>Exporter l’audio</button>
+    </div>
+
+    <input type="file" id="fileInput" accept="video/*,audio/*,.mkv,.mov,.avi,.webm,.mp4,.mp3,.wav,.m4a,.ogg" hidden>
+  </section>
+</main>
+
+<!-- ==================== PANNEAU LATÉRAL DROIT ==================== -->
+<aside class="panel">
+  <!-- 1. Format de sortie -->
+  <details open>
+    <summary>Format de sortie</summary>
+    <div class="fmt-grid" id="fmtGrid" role="group" aria-label="Format de sortie audio">
+      <button type="button" data-fmt="mp3" class="active" aria-pressed="true">MP3</button>
+      <button type="button" data-fmt="wav" aria-pressed="false">WAV</button>
+      <button type="button" data-fmt="m4a" aria-pressed="false">M4A</button>
+    </div>
+
+    <div class="row" id="bitrateRow">
+      <label for="mp3Bitrate">Débit MP3 (Éditeur)</label>
+      <select id="mp3Bitrate">
+        <option value="128">128 kbps</option>
+        <option value="192" selected>192 kbps</option>
+        <option value="320">320 kbps</option>
+      </select>
+    </div>
+
+    <div id="m4aNotice" class="notice hidden">
+      M4A est disponible pour le téléchargement direct depuis un lien. L’export depuis l’éditeur utilisera MP3 ou WAV.
+    </div>
+
+    <div id="lameNotice" class="notice dark hidden">
+      L’encodeur MP3 (lamejs) est indisponible hors-ligne. Sélectionnez WAV pour exporter sans connexion.
+    </div>
+
+    <label class="sw">
+      <input type="checkbox" id="directDl">
+      <span class="t"></span>
+      Téléchargement direct sans prévisualisation
+    </label>
+  </details>
+
+  <!-- 2. Découpage (Éditeur) -->
+  <details open>
+    <summary>Découpage (Éditeur)</summary>
+    <div class="row">
+      <label for="trimStart">Début (s)</label>
+      <output id="oTrimStart">00:00.0</output>
+      <input type="range" id="trimStart" min="0" max="100" step="0.1" value="0" disabled>
+    </div>
+    <div class="row">
+      <label for="trimEnd">Fin (s)</label>
+      <output id="oTrimEnd">00:00.0</output>
+      <input type="range" id="trimEnd" min="0" max="100" step="0.1" value="100" disabled>
+    </div>
+    <button type="button" id="selectAllBtn" class="sec full-btn" disabled>Tout sélectionner</button>
+  </details>
+
+  <!-- 3. Traitement (Éditeur) -->
+  <details open>
+    <summary>Traitement (Éditeur)</summary>
+    <div class="row">
+      <label for="volRange" title="Double-clic pour réinitialiser">Volume</label>
+      <output id="oVol">100%</output>
+      <input type="range" id="volRange" min="0" max="200" step="1" value="100">
+    </div>
+    <div class="row">
+      <label for="fadeInRange" title="Double-clic pour réinitialiser">Fondu entrée</label>
+      <output id="oFadeIn">0.0 s</output>
+      <input type="range" id="fadeInRange" min="0" max="10" step="0.1" value="0">
+    </div>
+    <div class="row">
+      <label for="fadeOutRange" title="Double-clic pour réinitialiser">Fondu sortie</label>
+      <output id="oFadeOut">0.0 s</output>
+      <input type="range" id="fadeOutRange" min="0" max="10" step="0.1" value="0">
+    </div>
+    <label class="sw">
+      <input type="checkbox" id="normCheck">
+      <span class="t"></span>
+      Normaliser (0 dB)
+    </label>
+  </details>
+
+  <!-- 4. Serveur Backend (Liens) — fermé par défaut, ouvert auto si hors ligne -->
+  <details id="backendDetails">
+    <summary>Serveur Backend (Liens)</summary>
+    <div class="api-col">
+      <input type="text" id="apiInput" placeholder="http://localhost:3000" spellcheck="false" aria-label="URL du serveur backend">
+      <button type="button" id="testApiBtn">Tester</button>
+    </div>
+    <small>Partagé avec Studio Vidéo (<code>crea_api_url</code>). Utilisez <code>http://localhost:3000</code> en local (Docker) ou votre URL Render en ligne.</small>
+  </details>
+
+  <!-- 5. Historique récent -->
+  <details>
+    <summary>Historique récent</summary>
+    <div id="histList" class="hist-list"></div>
+    <button type="button" id="clearHistBtn" class="sec full-btn hidden">Vider l’historique</button>
+  </details>
+</aside>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  // =========================================================================
+  // 1. CONSTANTES & CLÉS LOCALSTORAGE
+  // =========================================================================
+  const DEFAULT_API = 'http://localhost:3000';
+  const STORAGE_API_KEY = 'crea_api_url';
+  const STORAGE_HIST_KEY = 'crea_audio_history';
+  const MAX_HISTORY = 6;
+
+  // =========================================================================
+  // 2. ÉTAT GLOBAL DE L'APPLICATION
+  // =========================================================================
+  const state = {
+    viewMode: 'empty', // 'empty' | 'link' | 'editor'
+    apiBase: normalizeApiUrl(localStorage.getItem(STORAGE_API_KEY) || DEFAULT_API),
+    format: 'mp3',     // 'mp3' | 'wav' | 'm4a'
+    bitrate: 192,
+    busy: false,
+    lastFailedAction: null, // 'analyze' | 'download' | 'editLink'
+
+    // Données du lien réseau social courant
+    linkInfo: null,    // { url, title, thumbnail, duration, uploader, platform }
+    history: loadHistory(),
+
+    // Données de l'éditeur audio (fichier local ou lien chargé dans l'éditeur)
+    audioCtx: null,
+    buffer: null,
+    peaks: null,
+    fileName: '',
+    baseName: 'audio',
+    trimStart: 0,
+    trimEnd: 0,
+    volume: 100,
+    fadeIn: 0,
+    fadeOut: 0,
+    normalize: false,
+
+    // Lecture temps réel
+    isPlaying: false,
+    sourceNode: null,
+    gainNode: null,
+    playAnchorCtxTime: 0,
+    playAnchorOffset: 0,
+    currentTime: 0,
+    rafId: 0,
+    scrubbing: false
+  };
+
+  // =========================================================================
+  // 3. UTILITAIRES
+  // =========================================================================
+  function normalizeApiUrl(raw) {
+    const cleaned = (raw || '').trim().replace(/\/+$/, '');
+    return cleaned || DEFAULT_API;
+  }
+
+  function isValidUrl(raw) {
+    try {
+      const u = new URL((raw || '').trim());
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  function detectPlatform(rawUrl) {
+    try {
+      const host = new URL(rawUrl).hostname.toLowerCase().replace(/^www\./, '');
+      if (host.includes('youtube.com') || host === 'youtu.be' || host.includes('music.youtube')) return 'YouTube';
+      if (host.includes('tiktok.com')) return 'TikTok';
+      if (host.includes('instagram.com')) return 'Instagram';
+      if (host === 'x.com' || host.includes('twitter.com')) return 'X / Twitter';
+      if (host.includes('soundcloud.com')) return 'SoundCloud';
+      if (host.includes('twitch.tv')) return 'Twitch';
+      if (host.includes('vimeo.com')) return 'Vimeo';
+      if (host.includes('reddit.com') || host === 'redd.it') return 'Reddit';
+      if (host.includes('facebook.com') || host.includes('fb.watch')) return 'Facebook';
+      if (host.includes('dailymotion.com')) return 'Dailymotion';
+      return host.split('.')[0].toUpperCase() || 'LIEN';
+    } catch {
+      return 'LIEN';
+    }
+  }
+
+  function formatTimeDec(sec) {
+    const s = Math.max(0, Number(sec) || 0);
+    const m = Math.floor(s / 60);
+    const rem = (s - m * 60).toFixed(1).padStart(4, '0');
+    return `${String(m).padStart(2, '0')}:${rem}`;
+  }
+
+  function formatDurationInt(sec) {
+    const total = Math.max(0, Math.floor(Number(sec) || 0));
+    if (!total) return 'Durée inconnue';
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  }
+
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 o';
+    if (bytes < 1024) return Math.round(bytes) + ' o';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1).replace('.', ',') + ' Ko';
+    return (bytes / (1024 * 1024)).toFixed(2).replace('.', ',') + ' Mo';
+  }
+
+  function getBaseName(filename) {
+    const idx = (filename || '').lastIndexOf('.');
+    return idx > 0 ? filename.slice(0, idx) : (filename || 'audio');
+  }
+
+  function sanitizeFilename(name) {
+    return (name || 'audio')
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+      .replace(/\s+/g, '_')
+      .slice(0, 80) || 'audio';
+  }
+
+  function parseFilenameFromDisposition(headerVal) {
+    if (!headerVal) return null;
+    const utf8Match = headerVal.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+    if (utf8Match && utf8Match[1]) {
+      try { return decodeURIComponent(utf8Match[1].trim()); } catch { return utf8Match[1].trim(); }
+    }
+    const asciiMatch = headerVal.match(/filename\s*=\s*"?([^";]+)"?/i);
+    return asciiMatch && asciiMatch[1] ? asciiMatch[1].trim() : null;
+  }
+
+  function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  }
+
+  let toastTimer = 0;
+  function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+  }
+
+  // =========================================================================
+  // 4. GESTION DES 3 ÉTATS DE LA ZONE PRINCIPALE & ERREURS
+  // =========================================================================
+  function setViewMode(mode) {
+    state.viewMode = mode;
+    const hasContent = mode !== 'empty';
+
+    $('view').classList.toggle('has-content', hasContent);
+    $('linkView').classList.toggle('hidden', mode !== 'link');
+    $('editorView').classList.toggle('hidden', mode !== 'editor');
+
+    if (mode !== 'editor') {
+      stopPlayback();
+    } else {
+      requestAnimationFrame(() => drawWaveform());
+    }
+
+    updateFormatNotices();
+    updateControlsState();
+  }
+
+  function setLoading(show, title = '', sub = '', pct = null) {
+    state.busy = show;
+    const ov = $('loaderOverlay');
+    if (!show) {
+      ov.classList.remove('show');
+      updateControlsState();
+      return;
+    }
+    $('loaderTitle').textContent = title;
+    $('loaderSub').textContent = sub;
+    if (pct === null) {
+      $('progIndet').classList.remove('hidden');
+      $('progFill').classList.add('hidden');
+    } else {
+      $('progIndet').classList.add('hidden');
+      $('progFill').classList.remove('hidden');
+      $('progFill').style.width = Math.max(0, Math.min(100, pct)) + '%';
+    }
+    ov.classList.add('show');
+    updateControlsState();
+  }
+
+  function showError(msg, details = '', retryAction = null) {
+    state.lastFailedAction = retryAction;
+    $('errorMsg').textContent = msg;
+    const det = $('errorDetails');
+    if (details) {
+      det.textContent = details;
+      det.classList.remove('hidden');
+    } else {
+      det.textContent = '';
+      det.classList.add('hidden');
+    }
+    $('retryBtn').classList.toggle('hidden', !retryAction);
+    $('errorBox').classList.remove('hidden');
+  }
+
+  function clearError() {
+    $('errorBox').classList.add('hidden');
+    state.lastFailedAction = null;
+  }
+
+  function checkLameAvailable() {
+    return typeof window.lamejs !== 'undefined' && typeof window.lamejs.Mp3Encoder === 'function';
+  }
+
+  function updateFormatNotices() {
+    const isMp3 = state.format === 'mp3';
+    const isM4a = state.format === 'm4a';
+    $('bitrateRow').classList.toggle('hidden', !isMp3);
+    $('m4aNotice').classList.toggle('hidden', !isM4a);
+    $('lameNotice').classList.toggle('hidden', !(isMp3 && !checkLameAvailable()));
+  }
+
+  function updateControlsState() {
+    const isEd = state.viewMode === 'editor' && Boolean(state.buffer);
+    const isLink = state.viewMode === 'link' && Boolean(state.linkInfo);
+    const b = state.busy;
+
+    $('loadLinkBtn').disabled = b;
+    $('pasteBtn').disabled = b;
+    $('pickFileBtn').disabled = b;
+    $('dlLinkAudioBtn').disabled = b || !isLink;
+    $('editWaveBtn').disabled = b || !isLink;
+
+    $('playBtn').disabled = b || !isEd;
+    $('playBtn').textContent = state.isPlaying ? '⏸ Pause' : '▶ Lecture';
+    $('resetBtn').disabled = b || (!isEd && !isLink);
+    $('trimStart').disabled = b || !isEd;
+    $('trimEnd').disabled = b || !isEd;
+    $('selectAllBtn').disabled = b || !isEd;
+
+    // Bouton principal "Exporter l'audio" actif en mode éditeur ou en mode lien
+    const canExport = isEd || isLink;
+    $('exportBtn').disabled = b || !canExport;
+    if (isEd) {
+      const edFmt = state.format === 'wav' ? 'WAV' : 'MP3';
+      $('exportBtn').textContent = `Exporter l’audio (${edFmt})`;
+    } else if (isLink) {
+      $('exportBtn').textContent = `Télécharger (${state.format.toUpperCase()})`;
+    } else {
+      $('exportBtn').textContent = 'Exporter l’audio';
+    }
+
+    if (isLink) {
+      $('metaFmtTag').textContent = state.format.toUpperCase();
+      $('dlLinkAudioBtn').textContent = `Télécharger l’audio (${state.format.toUpperCase()})`;
+    }
+  }
+
+  function setFormat(fmt) {
+    state.format = fmt;
+    document.querySelectorAll('#fmtGrid button').forEach(btn => {
+      const act = btn.dataset.fmt === fmt;
+      btn.classList.toggle('active', act);
+      btn.setAttribute('aria-pressed', String(act));
+    });
+    updateFormatNotices();
+    updateControlsState();
+    if (state.buffer) updateEditorMetadata();
+  }
+
+  // =========================================================================
+  // 5. STATUT DU SERVEUR BACKEND (/health)
+  // =========================================================================
+  async function checkBackendHealth(showFeedback = false) {
+    const badge = $('serverBadge');
+    badge.className = 'status-badge';
+    badge.textContent = 'TEST…';
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4500);
+
+    try {
+      const res = await fetch(`${state.apiBase}/health`, { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (data && data.ok) {
+        badge.className = 'status-badge online';
+        badge.textContent = 'EN LIGNE';
+        if (showFeedback) showToast('Serveur backend en ligne !');
+        return true;
+      }
+      throw new Error('Réponse invalide');
+    } catch {
+      clearTimeout(timer);
+      badge.className = 'status-badge offline';
+      badge.textContent = 'HORS LIGNE';
+      // Ouvrir automatiquement la section Serveur Backend si hors ligne
+      $('backendDetails').open = true;
+      if (showFeedback) showToast('Serveur backend hors ligne.');
+      return false;
+    }
+  }
+
+  // =========================================================================
+  // 6. HISTORIQUE RÉCENT (crea_audio_history, MAX 6)
+  // =========================================================================
+  function loadHistory() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_HIST_KEY) || '[]');
+      return Array.isArray(parsed) ? parsed.slice(0, MAX_HISTORY) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveHistory() {
+    try { localStorage.setItem(STORAGE_HIST_KEY, JSON.stringify(state.history)); } catch {}
+  }
+
+  function addToHistory(url, title, thumbnail, platform) {
+    const cleanTitle = (title || platform || 'Lien audio').trim();
+    state.history = state.history.filter(item => item.url !== url);
+    state.history.unshift({
+      url,
+      title: cleanTitle,
+      thumbnail: thumbnail || '',
+      platform: platform || detectPlatform(url)
+    });
+    if (state.history.length > MAX_HISTORY) state.history.length = MAX_HISTORY;
+    saveHistory();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list = $('histList');
+    const clearBtn = $('clearHistBtn');
+    list.innerHTML = '';
+
+    if (!state.history.length) {
+      const empty = document.createElement('div');
+      empty.className = 'hist-empty';
+      empty.textContent = 'Aucun lien récent.';
+      list.appendChild(empty);
+      clearBtn.classList.add('hidden');
+      return;
+    }
+
+    clearBtn.classList.remove('hidden');
+    state.history.forEach(item => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'hist-item';
+      btn.title = item.url;
+
+      if (item.thumbnail) {
+        const img = document.createElement('img');
+        img.className = 'hist-thumb';
+        img.src = item.thumbnail;
+        img.alt = '';
+        img.onerror = function() { this.style.display = 'none'; };
+        btn.appendChild(img);
+      }
+
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'hist-title';
+      titleSpan.textContent = item.title;
+
+      const badgeSpan = document.createElement('span');
+      badgeSpan.className = 'hist-badge';
+      badgeSpan.textContent = (item.platform || 'LIEN').slice(0, 8).toUpperCase();
+
+      btn.append(titleSpan, badgeSpan);
+      btn.onclick = () => {
+        if (state.busy) return;
+        $('urlInput').value = item.url;
+        handleLinkSubmit();
+      };
+      list.appendChild(btn);
+    });
+  }
+
+  // =========================================================================
+  // 7. GESTION DES LIENS RÉSEAUX SOCIAUX (/api/info & /api/download)
+  // =========================================================================
+  function handleLinkSubmit() {
+    if (state.busy) return;
+    const url = $('urlInput').value.trim();
+    if (!isValidUrl(url)) {
+      showError('URL invalide', 'Collez un lien complet commençant par http:// ou https://');
+      return;
+    }
+    if ($('directDl').checked) {
+      downloadLinkAudio(url);
+    } else {
+      analyzeLink(url);
+    }
+  }
+
+  async function analyzeLink(rawUrl) {
+    const url = (rawUrl || $('urlInput').value || '').trim();
+    if (!isValidUrl(url)) {
+      showError('URL invalide', 'Collez un lien valide (YouTube, TikTok, Instagram, X, SoundCloud…).');
+      return;
+    }
+
+    clearError();
+    stopPlayback();
+    setLoading(true, 'Analyse du lien…', 'Récupération des informations via le serveur backend.', null);
+
+    try {
+      const res = await fetch(`${state.apiBase}/api/info?url=${encodeURIComponent(url)}`);
+      if (!res.ok) {
+        let errObj = { error: `Erreur serveur (${res.status})`, details: '' };
+        try { errObj = await res.json(); } catch { errObj.details = await res.text(); }
+        setLoading(false);
+        showError(errObj.error || 'Impossible de lire ce lien.', errObj.details || '', 'analyze');
+        return;
+      }
+
+      const info = await res.json();
+      const platform = detectPlatform(url);
+      state.linkInfo = {
+        url,
+        title: info.title || 'Sans titre',
+        thumbnail: info.thumbnail || '',
+        duration: info.duration || 0,
+        uploader: info.uploader || '',
+        platform
+      };
+
+      $('metaThumb').src = state.linkInfo.thumbnail || 'https://placehold.co/480x270/000000/D4FF00?text=AUDIO';
+      $('metaTitle').textContent = state.linkInfo.title;
+      $('metaPlatform').textContent = platform.toUpperCase();
+      $('metaDuration').textContent = formatDurationInt(state.linkInfo.duration);
+      const up = state.linkInfo.uploader.trim();
+      $('metaUploader').textContent = up ? (up.startsWith('@') ? up : '@' + up) : '@inconnu';
+      $('metaUrl').textContent = url;
+
+      setLoading(false);
+      setViewMode('link');
+      addToHistory(url, state.linkInfo.title, state.linkInfo.thumbnail, platform);
+    } catch (err) {
+      setLoading(false);
+      $('backendDetails').open = true;
+      showError(
+        'Serveur backend injoignable.',
+        `Vérifiez que votre serveur Node.js tourne bien sur ${state.apiBase} (${err.message}).`,
+        'analyze'
+      );
+    }
+  }
+
+  async function downloadLinkAudio(forcedUrl = null) {
+    if (state.busy) return;
+    const url = (forcedUrl || (state.linkInfo && state.linkInfo.url) || $('urlInput').value || '').trim();
+    if (!isValidUrl(url)) {
+      showError('URL invalide', 'Aucun lien valide à télécharger.');
+      return;
+    }
+
+    clearError();
+    const fmt = state.format;
+    setLoading(
+      true,
+      `Extraction audio (${fmt.toUpperCase()})…`,
+      'Le serveur extrait et convertit la piste sonore. Patientez quelques instants.',
+      null
+    );
+
+    try {
+      const endpoint = `${state.apiBase}/api/download?url=${encodeURIComponent(url)}&type=audio&format=${encodeURIComponent(fmt)}`;
+      const res = await fetch(endpoint);
+
+      if (!res.ok) {
+        let errObj = { error: `Échec du téléchargement (${res.status})`, details: '' };
+        try { errObj = await res.json(); } catch { errObj.details = await res.text(); }
+        setLoading(false);
+        showError(errObj.error || 'Échec de l’extraction audio.', errObj.details || '', 'download');
+        return;
+      }
+
+      const disp = res.headers.get('Content-Disposition');
+      const hasMatch = state.linkInfo && state.linkInfo.url === url;
+      const fallbackTitle = hasMatch ? state.linkInfo.title : detectPlatform(url);
+      const filename = parseFilenameFromDisposition(disp) || `${sanitizeFilename(fallbackTitle)}.${fmt}`;
+
+      const blob = await res.blob();
+      setLoading(false);
+      triggerDownload(blob, filename);
+      addToHistory(url, fallbackTitle, hasMatch ? state.linkInfo.thumbnail : '', detectPlatform(url));
+      showToast(`Téléchargé : ${filename}`);
+    } catch (err) {
+      setLoading(false);
+      $('backendDetails').open = true;
+      showError(
+        'Erreur réseau pendant le téléchargement.',
+        `Vérifiez que le serveur backend est bien démarré sur ${state.apiBase} (${err.message}).`,
+        'download'
+      );
+    }
+  }
+
+  // Télécharge l'audio du lien en MP3 depuis le backend puis l'ouvre dans l'éditeur de forme d'onde !
+  async function openLinkInWaveformEditor() {
+    if (state.busy || !state.linkInfo) return;
+    const url = state.linkInfo.url;
+    clearError();
+
+    setLoading(
+      true,
+      'Chargement dans l’éditeur…',
+      'Récupération du flux audio depuis le serveur backend…',
+      null
+    );
+
+    try {
+      const endpoint = `${state.apiBase}/api/download?url=${encodeURIComponent(url)}&type=audio&format=mp3`;
+      const res = await fetch(endpoint);
+      if (!res.ok) {
+        let errObj = { error: `Impossible de récupérer l’audio (${res.status})`, details: '' };
+        try { errObj = await res.json(); } catch { errObj.details = await res.text(); }
+        setLoading(false);
+        showError(errObj.error || 'Échec du chargement dans l’éditeur.', errObj.details || '', 'editLink');
+        return;
+      }
+
+      setLoading(true, 'Décodage de la forme d’onde…', 'Analyse du signal audio dans le navigateur…', null);
+      const arrayBuf = await res.arrayBuffer();
+      const displayName = `${state.linkInfo.title}.mp3`;
+      await decodeArrayBufferIntoEditor(arrayBuf, displayName);
+      showToast('Audio ouvert dans l’éditeur de forme d’onde.');
+    } catch (err) {
+      setLoading(false);
+      showError(
+        'Impossible d’ouvrir cet audio dans l’éditeur.',
+        err.message || 'Erreur lors du décodage audio.',
+        'editLink'
+      );
+    }
+  }
+
+  // =========================================================================
+  // 8. ÉDITEUR AUDIO (WEB AUDIO API, FORME D'ONDE, TRIM, EFFETS, EXPORT)
+  // =========================================================================
+  function getAudioCtx() {
+    if (!state.audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      state.audioCtx = new AC();
+    }
+    if (state.audioCtx.state === 'suspended') {
+      state.audioCtx.resume().catch(() => {});
+    }
+    return state.audioCtx;
+  }
+
+  function computePeaks(buffer, bucketCount = 1000) {
+    const len = buffer.length;
+    const c0 = buffer.getChannelData(0);
+    const c1 = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : null;
+    const peaks = new Float32Array(bucketCount);
+    const blockSize = Math.max(1, Math.floor(len / bucketCount));
+    const stride = Math.max(1, Math.floor(blockSize / 64));
+
+    let maxPeak = 0.001;
+    for (let i = 0; i < bucketCount; i++) {
+      const start = i * blockSize;
+      const end = Math.min(len, start + blockSize);
+      let pk = 0;
+      for (let j = start; j < end; j += stride) {
+        const v = c1 ? (Math.abs(c0[j]) + Math.abs(c1[j])) * 0.5 : Math.abs(c0[j]);
+        if (v > pk) pk = v;
+      }
+      peaks[i] = pk;
+      if (pk > maxPeak) maxPeak = pk;
+    }
+    for (let i = 0; i < bucketCount; i++) peaks[i] /= maxPeak;
+    return peaks;
+  }
+
+  async function decodeArrayBufferIntoEditor(arrayBuf, displayName) {
+    stopPlayback();
+    const ctx = getAudioCtx();
+    const decoded = await ctx.decodeAudioData(arrayBuf.slice(0));
+
+    state.buffer = decoded;
+    state.peaks = computePeaks(decoded, 1000);
+    state.fileName = displayName;
+    state.baseName = sanitizeFilename(getBaseName(displayName));
+    state.trimStart = 0;
+    state.trimEnd = decoded.duration;
+    state.currentTime = 0;
+
+    const durStr = decoded.duration.toFixed(2);
+    $('trimStart').max = durStr;
+    $('trimEnd').max = durStr;
+    $('trimStart').value = '0';
+    $('trimEnd').value = durStr;
+
+    setLoading(false);
+    setViewMode('editor');
+    updateEditorMetadata();
+    requestAnimationFrame(() => drawWaveform());
+  }
+
+  async function loadLocalFile(file) {
+    if (!file) return;
+    clearError();
+    stopPlayback();
+    setLoading(true, 'Extraction de la piste audio…', `Décodage de « ${file.name} » dans votre navigateur…`, null);
+
+    try {
+      const arrayBuf = await file.arrayBuffer();
+      await decodeArrayBufferIntoEditor(arrayBuf, file.name);
+      showToast('Audio chargé dans l’éditeur.');
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+      showError(
+        'Impossible de lire la piste audio de ce fichier.',
+        'Vérifiez que le fichier contient bien du son et que son codec est supporté par votre navigateur.'
+      );
+    }
+  }
+
+  function updateEditorMetadata() {
+    if (!state.buffer) return;
+    const dur = state.buffer.duration;
+    const selDur = Math.max(0.1, state.trimEnd - state.trimStart);
+    const ch = state.buffer.numberOfChannels;
+    const sr = state.buffer.sampleRate;
+    const effFmt = state.format === 'wav' ? 'wav' : 'mp3';
+
+    const estBytes = effFmt === 'wav'
+      ? 44 + Math.round(selDur * sr) * Math.min(2, ch) * 2
+      : Math.round((state.bitrate * 1000 / 8) * selDur);
+
+    $('edName').textContent = state.fileName;
+    $('edName').title = state.fileName;
+    $('edTotalDur').textContent = formatTimeDec(dur);
+    $('edSelDur').textContent = `Sélection : ${formatTimeDec(selDur)}`;
+    $('edRateCh').textContent = `${(sr / 1000).toFixed(1).replace(/\.0$/, '')} kHz · ${ch > 1 ? 'Stéréo' : 'Mono'}`;
+    $('edEstSize').textContent = `${effFmt.toUpperCase()} · ~${formatBytes(estBytes)}`;
+
+    $('oTrimStart').textContent = formatTimeDec(state.trimStart);
+    $('oTrimEnd').textContent = formatTimeDec(state.trimEnd);
+    $('selRange').textContent = `${formatTimeDec(state.trimStart)} → ${formatTimeDec(state.trimEnd)}`;
+    $('playTime').textContent = formatTimeDec(state.currentTime);
+  }
+
+  function drawWaveform() {
+    const canvas = $('waveCanvas');
+    const wrap = $('waveWrap');
+    if (!canvas || !wrap) return;
+
+    const rect = wrap.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const cw = Math.round(rect.width * dpr);
+    const ch = Math.round(rect.height * dpr);
+    if (canvas.width !== cw || canvas.height !== ch) {
+      canvas.width = cw;
+      canvas.height = ch;
+    }
+
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const W = rect.width;
+    const H = rect.height;
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, W, H);
+
+    if (!state.buffer || !state.peaks) return;
+
+    const dur = state.buffer.duration || 1;
+    const xStart = (state.trimStart / dur) * W;
+    const xEnd = (state.trimEnd / dur) * W;
+
+    // 1. Zone sélectionnée surlignée en #D4FF00
+    ctx.fillStyle = '#D4FF00';
+    ctx.fillRect(xStart, 0, Math.max(0, xEnd - xStart), H);
+
+    // 2. Axe central discret
+    ctx.fillStyle = 'rgba(0,0,0,0.14)';
+    ctx.fillRect(0, Math.floor(H / 2), W, 1);
+
+    // 3. Barres noires nettes
+    const barStep = 4;
+    const barW = 2;
+    const barCount = Math.max(1, Math.floor(W / barStep));
+    const midY = H / 2;
+    const maxBarH = H * 0.82;
+    const peaks = state.peaks;
+
+    for (let i = 0; i < barCount; i++) {
+      const x = i * barStep + 1;
+      const pIdx = Math.min(peaks.length - 1, Math.floor((i / barCount) * peaks.length));
+      const bh = Math.max(2, peaks[pIdx] * maxBarH);
+      const inSel = x >= xStart && x <= xEnd;
+      ctx.fillStyle = inSel ? '#000000' : 'rgba(0,0,0,0.3)';
+      ctx.fillRect(x, midY - bh / 2, barW, bh);
+    }
+
+    // 4. Bornes Début / Fin
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(Math.max(0, Math.round(xStart) - 1), 0, 3, H);
+    ctx.fillRect(Math.min(W - 3, Math.round(xEnd) - 1), 0, 3, H);
+    ctx.fillRect(Math.max(0, Math.round(xStart) - 1), 0, 12, 6);
+    ctx.fillRect(Math.max(0, Math.round(xEnd) - 11), H - 6, 12, 6);
+
+    // 5. Tête de lecture animée
+    const playX = Math.max(0, Math.min(W, (state.currentTime / dur) * W));
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(Math.round(playX) - 1, 0, 2, H);
+    ctx.beginPath();
+    ctx.moveTo(playX - 6, 0);
+    ctx.lineTo(playX + 6, 0);
+    ctx.lineTo(playX, 8);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Lecture audio en direct
+  function startPlayback(fromSec = null) {
+    if (!state.buffer || state.busy) return;
+    stopPlayback(false);
+
+    const ctx = getAudioCtx();
+    let offset = fromSec !== null ? fromSec : state.currentTime;
+    if (offset < state.trimStart || offset >= state.trimEnd - 0.05) {
+      offset = state.trimStart;
+    }
+    const playDur = Math.max(0.05, state.trimEnd - offset);
+
+    const src = ctx.createBufferSource();
+    src.buffer = state.buffer;
+
+    const gain = ctx.createGain();
+    gain.gain.value = state.normalize ? 1 : (state.volume / 100);
+
+    src.connect(gain);
+    gain.connect(ctx.destination);
+
+    state.sourceNode = src;
+    state.gainNode = gain;
+    state.playAnchorCtxTime = ctx.currentTime;
+    state.playAnchorOffset = offset;
+    state.currentTime = offset;
+    state.isPlaying = true;
+
+    src.onended = () => {
+      if (state.sourceNode === src) {
+        state.isPlaying = false;
+        state.sourceNode = null;
+        state.gainNode = null;
+        cancelAnimationFrame(state.rafId);
+        state.currentTime = state.trimStart;
+        updateControlsState();
+        updateEditorMetadata();
+        drawWaveform();
+      }
+    };
+
+    src.start(0, offset, playDur);
+    updateControlsState();
+    tickPlayback();
+  }
+
+  function stopPlayback(resetVisual = true) {
+    if (state.sourceNode) {
+      const node = state.sourceNode;
+      state.sourceNode = null;
+      state.gainNode = null;
+      try { node.stop(); } catch {}
+    }
+    state.isPlaying = false;
+    cancelAnimationFrame(state.rafId);
+    if (resetVisual) {
+      updateControlsState();
+      if (state.buffer) {
+        updateEditorMetadata();
+        drawWaveform();
+      }
+    }
+  }
+
+  function tickPlayback() {
+    if (!state.isPlaying || !state.audioCtx) return;
+    const elapsed = state.audioCtx.currentTime - state.playAnchorCtxTime;
+    state.currentTime = Math.min(state.trimEnd, state.playAnchorOffset + elapsed);
+    $('playTime').textContent = formatTimeDec(state.currentTime);
+    drawWaveform();
+    if (state.isPlaying) {
+      state.rafId = requestAnimationFrame(tickPlayback);
+    }
+  }
+
+  function togglePlayback() {
+    if (state.viewMode !== 'editor' || !state.buffer || state.busy) return;
+    if (state.isPlaying) stopPlayback();
+    else startPlayback();
+  }
+
+  // Traitement PCM (Trim, Volume ou Normalisation 0 dB, Fondus entrée/sortie)
+  function buildProcessedPCM() {
+    const buf = state.buffer;
+    const sr = buf.sampleRate;
+    const startSample = Math.max(0, Math.floor(state.trimStart * sr));
+    const endSample = Math.min(buf.length, Math.ceil(state.trimEnd * sr));
+    const length = Math.max(1, endSample - startSample);
+    const numChannels = Math.min(2, buf.numberOfChannels);
+
+    const channels = [];
+    for (let c = 0; c < numChannels; c++) {
+      const src = buf.getChannelData(c);
+      const out = new Float32Array(length);
+      for (let i = 0; i < length; i++) out[i] = src[startSample + i];
+      channels.push(out);
+    }
+
+    let gainFactor = state.volume / 100;
+    if (state.normalize) {
+      let peak = 0;
+      for (let c = 0; c < numChannels; c++) {
+        const data = channels[c];
+        for (let i = 0; i < length; i++) {
+          const a = Math.abs(data[i]);
+          if (a > peak) peak = a;
+        }
+      }
+      gainFactor = peak > 0.0001 ? (0.999 / peak) : 1;
+    }
+
+    const fadeInSamples = Math.min(length, Math.round(state.fadeIn * sr));
+    const fadeOutSamples = Math.min(length, Math.round(state.fadeOut * sr));
+    const fadeOutStart = length - fadeOutSamples;
+
+    for (let c = 0; c < numChannels; c++) {
+      const data = channels[c];
+      for (let i = 0; i < length; i++) {
+        let v = data[i] * gainFactor;
+        if (fadeInSamples > 0 && i < fadeInSamples) v *= i / fadeInSamples;
+        if (fadeOutSamples > 0 && i >= fadeOutStart) v *= (length - 1 - i) / fadeOutSamples;
+        data[i] = v < -1 ? -1 : v > 1 ? 1 : v;
+      }
+    }
+
+    return { channels, sampleRate: sr, length, numChannels };
+  }
+
+  // Encodeur WAV 16-bit PCM natif (sans dépendance)
+  function encodeWAV(pcm) {
+    const { channels, sampleRate, length, numChannels } = pcm;
+    const blockAlign = numChannels * 2;
+    const dataSize = length * blockAlign;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+
+    const writeStr = (off, str) => {
+      for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i));
+    };
+
+    writeStr(0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * blockAlign, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, 16, true);
+    writeStr(36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    let offset = 44;
+    if (numChannels === 1) {
+      const ch0 = channels[0];
+      for (let i = 0; i < length; i++) {
+        const s = ch0[i];
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        offset += 2;
+      }
+    } else {
+      const l = channels[0], r = channels[1];
+      for (let i = 0; i < length; i++) {
+        const sl = l[i], srVal = r[i];
+        view.setInt16(offset, sl < 0 ? sl * 0x8000 : sl * 0x7FFF, true);
+        view.setInt16(offset + 2, srVal < 0 ? srVal * 0x8000 : srVal * 0x7FFF, true);
+        offset += 4;
+      }
+    }
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
+  // Encodeur MP3 via lamejs (par blocs pour garder l'UI réactive)
+  async function encodeMP3(pcm, bitrate, onProgress) {
+    if (!checkLameAvailable()) {
+      throw new Error('Encodeur MP3 (lamejs) indisponible hors-ligne. Sélectionnez WAV.');
+    }
+    const { channels, sampleRate, length, numChannels } = pcm;
+    const encoder = new window.lamejs.Mp3Encoder(numChannels, sampleRate, bitrate);
+    const blockSize = 1152;
+    const mp3Chunks = [];
+
+    const toInt16 = (f32, start, count) => {
+      const out = new Int16Array(count);
+      for (let i = 0; i < count; i++) {
+        const s = f32[start + i];
+        out[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+      return out;
+    };
+
+    let processed = 0;
+    let iter = 0;
+    while (processed < length) {
+      const count = Math.min(blockSize, length - processed);
+      const mp3buf = numChannels === 1
+        ? encoder.encodeBuffer(toInt16(channels[0], processed, count))
+        : encoder.encodeBuffer(
+            toInt16(channels[0], processed, count),
+            toInt16(channels[1], processed, count)
+          );
+      if (mp3buf.length > 0) mp3Chunks.push(mp3buf);
+
+      processed += count;
+      iter++;
+      if (iter % 35 === 0) {
+        if (onProgress) onProgress(Math.round((processed / length) * 100));
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+
+    const flushed = encoder.flush();
+    if (flushed.length > 0) mp3Chunks.push(flushed);
+    if (onProgress) onProgress(100);
+    return new Blob(mp3Chunks, { type: 'audio/mpeg' });
+  }
+
+  async function exportEditorAudio() {
+    if (!state.buffer || state.busy) return;
+    stopPlayback();
+
+    const targetFmt = state.format === 'wav' ? 'wav' : 'mp3';
+    if (targetFmt === 'mp3' && !checkLameAvailable()) {
+      showToast('MP3 indisponible hors-ligne : sélectionnez WAV.');
+      return;
+    }
+
+    setLoading(true, 'Préparation de l’audio…', `Application des réglages et encodage ${targetFmt.toUpperCase()}…`, 5);
+    await new Promise(r => setTimeout(r, 20));
+
+    try {
+      const pcm = buildProcessedPCM();
+      let blob;
+      if (targetFmt === 'wav') {
+        setLoading(true, 'Encodage WAV 16-bit…', 'Génération du fichier audio…', 75);
+        await new Promise(r => setTimeout(r, 15));
+        blob = encodeWAV(pcm);
+      } else {
+        blob = await encodeMP3(pcm, state.bitrate, pct => {
+          setLoading(true, `Encodage MP3 (${pct}%)…`, `Débit ${state.bitrate} kbps`, pct);
+        });
+      }
+
+      const filename = `${state.baseName}.${targetFmt}`;
+      setLoading(false);
+      triggerDownload(blob, filename);
+      showToast(`Exporté : ${filename}`);
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+      showError('Échec de l’export audio.', err.message || '');
+    }
+  }
+
+  function resetAll() {
+    if (state.busy) return;
+    stopPlayback();
+    clearError();
+
+    if (state.viewMode === 'editor' && state.buffer) {
+      state.trimStart = 0;
+      state.trimEnd = state.buffer.duration;
+      state.currentTime = 0;
+      state.volume = 100;
+      state.fadeIn = 0;
+      state.fadeOut = 0;
+      state.normalize = false;
+
+      $('trimStart').value = '0';
+      $('trimEnd').value = state.buffer.duration.toFixed(2);
+      $('volRange').value = '100';
+      $('oVol').textContent = '100%';
+      $('fadeInRange').value = '0';
+      $('oFadeIn').textContent = '0.0 s';
+      $('fadeOutRange').value = '0';
+      $('oFadeOut').textContent = '0.0 s';
+      $('normCheck').checked = false;
+
+      updateEditorMetadata();
+      drawWaveform();
+      showToast('Réglages de l’éditeur réinitialisés.');
+    } else {
+      $('urlInput').value = '';
+      state.linkInfo = null;
+      state.buffer = null;
+      state.peaks = null;
+      setViewMode('empty');
+    }
+  }
+
+  // =========================================================================
+  // 9. ÉVÉNEMENTS UTILISATEUR
+  // =========================================================================
+
+  // Barre de lien permanente
+  $('loadLinkBtn').onclick = handleLinkSubmit;
+  $('urlInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleLinkSubmit();
+    }
+  });
+
+  $('pasteBtn').onclick = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const txt = (await navigator.clipboard.readText()).trim();
+        if (txt) {
+          $('urlInput').value = txt;
+          if (isValidUrl(txt)) handleLinkSubmit();
+          else showToast('Texte collé.');
+          return;
+        }
+      }
+      showToast('Utilisez Ctrl+V dans le champ URL.');
+      $('urlInput').focus();
+    } catch {
+      showToast('Accès presse-papier bloqué : utilisez Ctrl+V.');
+      $('urlInput').focus();
+    }
+  };
+
+  // Collage global Ctrl+V n'importe où sur la page : si URL http(s), remplit et analyse
+  window.addEventListener('paste', e => {
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    const txt = ((e.clipboardData && e.clipboardData.getData('text')) || '').trim();
+    if (isValidUrl(txt)) {
+      e.preventDefault();
+      $('urlInput').value = txt;
+      handleLinkSubmit();
+    }
+  });
+
+  // Fichier local : clic & glisser-déposer sur toute la zone .stage
+  $('drop').onclick = () => $('fileInput').click();
+  $('drop').onkeydown = e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      $('fileInput').click();
+    }
+  };
+  $('pickFileBtn').onclick = () => $('fileInput').click();
+  $('fileInput').onchange = e => {
+    if (e.target.files[0]) loadLocalFile(e.target.files[0]);
+    e.target.value = '';
+  };
+
+  const stageEl = $('stage');
+  ['dragenter', 'dragover'].forEach(ev => stageEl.addEventListener(ev, e => {
+    e.preventDefault();
+    stageEl.classList.add('over');
+  }));
+  ['dragleave', 'drop'].forEach(ev => stageEl.addEventListener(ev, e => {
+    e.preventDefault();
+    if (ev === 'drop' || !stageEl.contains(e.relatedTarget)) {
+      stageEl.classList.remove('over');
+    }
+  }));
+  stageEl.addEventListener('drop', e => {
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadLocalFile(f);
+  });
+
+  // Actions carte Lien
+  $('dlLinkAudioBtn').onclick = () => downloadLinkAudio();
+  $('editWaveBtn').onclick = openLinkInWaveformEditor;
+
+  // Bouton Réessayer sur erreur
+  $('retryBtn').onclick = () => {
+    if (state.lastFailedAction === 'download') downloadLinkAudio();
+    else if (state.lastFailedAction === 'editLink') openLinkInWaveformEditor();
+    else analyzeLink();
+  };
+
+  // Barre d'actions inférieure
+  $('playBtn').onclick = togglePlayback;
+  $('resetBtn').onclick = resetAll;
+  $('exportBtn').onclick = () => {
+    if (state.viewMode === 'editor') exportEditorAudio();
+    else if (state.viewMode === 'link') downloadLinkAudio();
+  };
+
+  // Interaction clic / glisser sur le canvas de forme d'onde
+  function seekFromPointerEvent(e) {
+    if (!state.buffer || state.busy) return;
+    const rect = $('waveCanvas').getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const targetSec = ratio * state.buffer.duration;
+    state.currentTime = Math.max(state.trimStart, Math.min(state.trimEnd, targetSec));
+    if (state.isPlaying) {
+      startPlayback(state.currentTime);
+    } else {
+      updateEditorMetadata();
+      drawWaveform();
+    }
+  }
+
+  $('waveCanvas').addEventListener('pointerdown', e => {
+    if (!state.buffer || state.busy) return;
+    state.scrubbing = true;
+    $('waveCanvas').setPointerCapture(e.pointerId);
+    seekFromPointerEvent(e);
+  });
+  $('waveCanvas').addEventListener('pointermove', e => {
+    if (!state.scrubbing) return;
+    seekFromPointerEvent(e);
+  });
+  ['pointerup', 'pointercancel'].forEach(ev => {
+    $('waveCanvas').addEventListener(ev, e => {
+      if (!state.scrubbing) return;
+      state.scrubbing = false;
+      if ($('waveCanvas').hasPointerCapture(e.pointerId)) {
+        $('waveCanvas').releasePointerCapture(e.pointerId);
+      }
+    });
+  });
+
+  // Panneau droit : Format de sortie
+  $('fmtGrid').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-fmt]');
+    if (btn) setFormat(btn.dataset.fmt);
+  });
+  $('mp3Bitrate').onchange = e => {
+    state.bitrate = +e.target.value;
+    if (state.buffer) updateEditorMetadata();
+  };
+
+  // Panneau droit : Découpage (Trim)
+  $('trimStart').oninput = e => {
+    if (!state.buffer) return;
+    let v = +e.target.value;
+    const maxStart = Math.max(0, state.trimEnd - 0.1);
+    if (v > maxStart) {
+      v = maxStart;
+      e.target.value = v.toFixed(2);
+    }
+    state.trimStart = v;
+    if (state.currentTime < v) state.currentTime = v;
+    if (state.isPlaying) startPlayback(state.currentTime);
+    updateEditorMetadata();
+    drawWaveform();
+  };
+
+  $('trimEnd').oninput = e => {
+    if (!state.buffer) return;
+    let v = +e.target.value;
+    const minEnd = Math.min(state.buffer.duration, state.trimStart + 0.1);
+    if (v < minEnd) {
+      v = minEnd;
+      e.target.value = v.toFixed(2);
+    }
+    state.trimEnd = v;
+    if (state.currentTime > v) state.currentTime = state.trimStart;
+    if (state.isPlaying) startPlayback(state.currentTime);
+    updateEditorMetadata();
+    drawWaveform();
+  };
+
+  $('selectAllBtn').onclick = () => {
+    if (!state.buffer) return;
+    state.trimStart = 0;
+    state.trimEnd = state.buffer.duration;
+    $('trimStart').value = '0';
+    $('trimEnd').value = state.buffer.duration.toFixed(2);
+    updateEditorMetadata();
+    drawWaveform();
+  };
+
+  // Panneau droit : Traitement audio
+  $('volRange').oninput = e => {
+    state.volume = +e.target.value;
+    $('oVol').textContent = state.volume + '%';
+    if (state.gainNode && !state.normalize) {
+      state.gainNode.gain.value = state.volume / 100;
+    }
+  };
+  $('volRange').previousElementSibling.ondblclick = () => {
+    state.volume = 100;
+    $('volRange').value = '100';
+    $('oVol').textContent = '100%';
+    if (state.gainNode && !state.normalize) state.gainNode.gain.value = 1;
+  };
+
+  $('fadeInRange').oninput = e => {
+    state.fadeIn = +e.target.value;
+    $('oFadeIn').textContent = state.fadeIn.toFixed(1) + ' s';
+  };
+  $('fadeInRange').previousElementSibling.ondblclick = () => {
+    state.fadeIn = 0;
+    $('fadeInRange').value = '0';
+    $('oFadeIn').textContent = '0.0 s';
+  };
+
+  $('fadeOutRange').oninput = e => {
+    state.fadeOut = +e.target.value;
+    $('oFadeOut').textContent = state.fadeOut.toFixed(1) + ' s';
+  };
+  $('fadeOutRange').previousElementSibling.ondblclick = () => {
+    state.fadeOut = 0;
+    $('fadeOutRange').value = '0';
+    $('oFadeOut').textContent = '0.0 s';
+  };
+
+  $('normCheck').onchange = e => {
+    state.normalize = e.target.checked;
+    if (state.gainNode) {
+      state.gainNode.gain.value = state.normalize ? 1 : (state.volume / 100);
+    }
+  };
+
+  // Panneau droit : Serveur Backend
+  $('apiInput').value = state.apiBase;
+  function saveApiUrl() {
+    state.apiBase = normalizeApiUrl($('apiInput').value);
+    $('apiInput').value = state.apiBase;
+    localStorage.setItem(STORAGE_API_KEY, state.apiBase);
+  }
+  $('testApiBtn').onclick = () => {
+    saveApiUrl();
+    checkBackendHealth(true);
+  };
+  $('apiInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveApiUrl();
+      checkBackendHealth(true);
+    }
+  });
+
+  // Panneau droit : Historique
+  $('clearHistBtn').onclick = () => {
+    state.history = [];
+    saveHistory();
+    renderHistory();
+    showToast('Historique vidé.');
+  };
+
+  // Raccourci Espace pour Lecture / Pause + redimensionnement canvas
+  window.addEventListener('keydown', e => {
+    if (e.code === 'Space' && state.viewMode === 'editor' && state.buffer && !state.busy) {
+      const tag = (document.activeElement && document.activeElement.tagName) || '';
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'BUTTON') return;
+      e.preventDefault();
+      togglePlayback();
+    }
+  });
+  window.addEventListener('resize', () => {
+    if (state.viewMode === 'editor' && state.buffer) drawWaveform();
+  });
+
+  // =========================================================================
+  // 10. INITIALISATION
+  // =========================================================================
+  setFormat('mp3');
+  setViewMode('empty');
+  renderHistory();
+  checkBackendHealth(false);
+  window.addEventListener('load', () => updateFormatNotices());
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Outils Créa - Hub</title>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <style>
+
+        :root {
+            --fluo-green: #39FF14;
+            --border-color: #000000;
+            --bg-color: #FFFFFF;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+
+            width: 100%;
+            height: 100%;
+
+            background-color: var(--bg-color);
+
+            font-family: 'Space Grotesk', sans-serif;
+
+            color: var(--border-color);
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+
+        /* ========================================
+           CADRE PRINCIPAL
+        ======================================== */
+
+        .main-container {
+            width: 99vw;
+            height: 98vh;
+
+            border: 2px solid var(--border-color);
+
+            position: relative;
+
+            display: flex;
+            flex-direction: column;
+
+            box-sizing: border-box;
+
+            padding: 20px;
+
+            overflow: hidden;
+        }
+
+
+        /* ========================================
+           INFORMATIONS HAUT GAUCHE
+        ======================================== */
+
+        .header-info {
+            position: absolute;
+
+            top: 2px;
+            left: 2px;
+
+            z-index: 10;
+
+            font-weight: 700;
+            font-size: 1.1rem;
+            line-height: 1.2;
+        }
+
+
+        /* ========================================
+           LOGO / TITRE IMAGE
+        ======================================== */
+
+        .title-container {
+            width: 100%;
+            height: 230px;
+
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+
+            margin-top: 15px;
+            margin-bottom: 30px;
+
+            padding: 0;
+        }
+
+
+        .title-image {
+            display: block;
+
+            width: min(850px, 70%);
+            max-height: 210px;
+
+            object-fit: contain;
+            object-position: center;
+
+            user-select: none;
+            pointer-events: none;
+        }
+
+
+        /* ========================================
+           GRILLE PRINCIPALE
+        ======================================== */
+
+        .grid-container {
+            display: grid;
+
+            grid-template-columns: repeat(4, 1fr);
+
+            gap: 25px;
+
+            width: 80%;
+
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+
+        /* ========================================
+           BOUTONS DES OUTILS
+        ======================================== */
+
+        .tool-btn {
+            display: flex;
+
+            justify-content: center;
+            align-items: center;
+
+            min-height: 60px;
+
+            border: 2px solid var(--border-color);
+
+            padding: 15px 10px;
+
+            text-decoration: none;
+
+            color: var(--border-color);
+
+            font-weight: 700;
+            font-size: 1rem;
+
+            text-align: center;
+
+            background-color: var(--bg-color);
+
+            transition:
+                background-color 0.2s ease-in-out,
+                color 0.2s ease-in-out;
+        }
+
+
+        .tool-btn:not(.empty):hover {
+            background-color: var(--border-color);
+            color: var(--bg-color);
+        }
+
+
+        .tool-btn.empty {
+            pointer-events: none;
+        }
+
+
+        /* ========================================
+           BOUTON DOWNLOAD
+        ======================================== */
+
+        .download-section {
+            width: 100%;
+
+            margin-top: auto;
+            margin-bottom: 35px;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+
+        .download-btn {
+            background-color: var(--fluo-green);
+
+            border: 3px solid var(--border-color);
+
+            border-radius: 40px;
+
+            padding: 15px 40px;
+
+            display: flex;
+            flex-direction: column;
+
+            justify-content: center;
+            align-items: center;
+
+            cursor: pointer;
+
+            color: var(--border-color);
+
+            font-weight: 700;
+            font-size: 1.2rem;
+
+            text-decoration: none;
+
+            transition:
+                transform 0.1s ease,
+                background-color 0.15s ease;
+        }
+
+
+        .download-btn:hover {
+            background-color: #2ce610;
+        }
+
+
+        .download-btn:active {
+            transform: scale(0.95);
+        }
+
+
+        .download-btn .subtext {
+            font-size: 0.7rem;
+            font-weight: 400;
+
+            margin-top: 5px;
+        }
+
+
+        /* ========================================
+           STATISTIQUES BAS GAUCHE
+        ======================================== */
+
+        .footer-stats {
+            position: absolute;
+
+            bottom: 2px;
+            left: 2px;
+
+            font-weight: 700;
+            font-size: 1.1rem;
+            line-height: 1.4;
+        }
+
+
+        /* ========================================
+           RESPONSIVE TABLETTE
+        ======================================== */
+
+        @media (max-width: 900px) {
+
+            .title-container {
+                height: 190px;
+
+                margin-top: 35px;
+                margin-bottom: 25px;
+            }
+
+
+            .title-image {
+                width: 90%;
+                max-height: 180px;
+            }
+
+
+            .grid-container {
+                grid-template-columns: repeat(2, 1fr);
+
+                width: 95%;
+
+                gap: 15px;
+            }
+
+
+            .download-section {
+                margin-bottom: 80px;
+            }
+
+        }
+
+
+        /* ========================================
+           RESPONSIVE MOBILE
+        ======================================== */
+
+        @media (max-width: 520px) {
+
+            html,
+            body {
+                height: auto;
+                min-height: 100%;
+            }
+
+
+            .main-container {
+                width: 98vw;
+
+                height: auto;
+                min-height: 98vh;
+
+                padding: 15px;
+
+                overflow: visible;
+            }
+
+
+            .header-info {
+                font-size: 0.85rem;
+            }
+
+
+            .title-container {
+                height: 150px;
+
+                margin-top: 45px;
+                margin-bottom: 20px;
+            }
+
+
+            .title-image {
+                width: 100%;
+
+                max-height: 140px;
+            }
+
+
+            .grid-container {
+                grid-template-columns: 1fr;
+
+                width: 94%;
+
+                gap: 12px;
+            }
+
+
+            .tool-btn {
+                min-height: 55px;
+            }
+
+
+            .download-section {
+                margin-top: 30px;
+                margin-bottom: 90px;
+            }
+
+
+            .download-btn {
+                padding: 13px 30px;
+
+                font-size: 1rem;
+            }
+
+
+            .footer-stats {
+                bottom: 2px;
+                left: 2px;
+
+                font-size: 0.85rem;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="main-container">
+
+
+    <!-- ========================================
+         INFOS HAUT GAUCHE
+    ========================================= -->
+
+    <div class="header-info">
+        Created by Romain
+        <br>
+        Free for all
+    </div>
+
+
+    <!-- ========================================
+         LOGO
+    ========================================= -->
+
+    <div class="title-container">
+
+        <img
+            src="titre-image.png"
+            alt="Outils Créa"
+            class="title-image"
+        >
+
+    </div>
+
+
+    <!-- ========================================
+         GRILLE DES OUTILS
+    ========================================= -->
+
+    <div class="grid-container">
+        <!-- LIGNE 1 -->
+        <a href="NoirEtBlanc.html" class="tool-btn">noir et blanc</a>
+        <a href="StudioPalette.html" class="tool-btn">palette de couleur</a>
+        <a href="download.html" class="tool-btn">télécharger vidéo</a>
+        <a href="studio_convertisseur.html" class="tool-btn">convertisseur image</a>
+
+        <!-- LIGNE 2 -->
+        <a href="detourage.html" class="tool-btn">détourage</a>
+        <a href="pipette.html" class="tool-btn">couleur pipette</a>
+        <a href="#" class="tool-btn">vidéo en son</a>
+        <a href="Studio-Gomme.html" class="tool-btn">enlever filmogram</a>
+
+        <!-- LIGNE 3 -->
+         <a href="bitmap-type-studio.html" class="tool-btn">police bitmap</a>
+         <a href="studio_filtres.html" class="tool-btn">effet sur image</a>
+        <a href="text.html" class="tool-btn">texte d'une image</a>
+
+    </div>
+
+
+    <!-- ========================================
+         BOUTON DOWNLOAD
+    ========================================= -->
+    <div class="download-section">
+
+        <button id="dl-button" class="download-btn" type="button">Download in local
+            <span class="subtext">
+                (just HTML/CSS/JS)
+            </span>
+        </button>
+
+    </div>
+
+
+    <!-- ========================================
+         STATISTIQUES BAS GAUCHE
+    ========================================= -->
+
+    <div class="footer-stats">
+
+        Nombre de téléchargement :
+        <span id="dl-count">0</span>
+
+        <br>
+
+        Nombre de visite :
+        <span id="visit-count">0</span>
+
+    </div>
+
+
+</div>
+
+
+<script>
+
+document.addEventListener('DOMContentLoaded', () => {
+
+
+    /* ========================================
+       COMPTEUR DE VISITES
+    ======================================== */
+
+    let visits = parseInt(
+        localStorage.getItem('crea_visits') || '0',
+        10
+    );
+
+
+    visits++;
+
+
+    localStorage.setItem(
+        'crea_visits',
+        visits
+    );
+
+
+    document
+        .getElementById('visit-count')
+        .innerText = visits;
+
+
+
+    /* ========================================
+       COMPTEUR DE TÉLÉCHARGEMENTS
+    ======================================== */
+
+    let downloads = parseInt(
+        localStorage.getItem('crea_downloads') || '0',
+        10
+    );
+
+
+    document
+        .getElementById('dl-count')
+        .innerText = downloads;
+
+
+
+    /* ========================================
+       BOUTON DOWNLOAD
+    ======================================== */
+
+    document
+        .getElementById('dl-button')
+        .addEventListener(
+            'click',
+            () => {
+
+
+                downloads++;
+
+
+                localStorage.setItem(
+                    'crea_downloads',
+                    downloads
+                );
+
+
+                document
+                    .getElementById('dl-count')
+                    .innerText = downloads;
+
+
+                alert(
+                    "Fonctionnalité de téléchargement de l'archive à configurer."
+                );
+
+            }
+        );
+
+
+});
+
+</script>
+
+
+</body>
+
+</html>

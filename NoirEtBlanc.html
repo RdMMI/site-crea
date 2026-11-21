@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Studio Noir & Blanc</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FFFFFF;--ink:#000000;--acc:#D4FF00;color-scheme:light;box-sizing:border-box}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font:400 14px/1.4 "Bricolage Grotesque",system-ui,sans-serif;display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:16px;padding:16px;height:100vh}
+main{display:flex;flex-direction:column;gap:12px;padding:0;min-width:0;min-height:0;height:100%;overflow:hidden}
+header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;flex-shrink:0}
+h1{font-size:28px;line-height:1;font-weight:800;margin:0;letter-spacing:-.02em}
+header span{color:var(--ink);opacity:.6;font-size:14px}
+h2{font-size:15px;font-weight:800;margin:0 0 4px}
+p{margin:0}
+.stage{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid var(--ink);overflow:hidden;padding:12px;background:var(--bg)}
+.view{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+canvas{display:none;max-width:100%;max-height:100%;width:auto;height:auto;touch-action:manipulation;user-select:none;-webkit-touch-callout:none;border:2px solid var(--ink)}
+.view.has canvas{display:block}
+#drop{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;cursor:pointer;background:var(--bg);outline:2px dashed var(--ink);outline-offset:-14px;padding:30px}
+#drop strong{font-size:24px;font-weight:800}
+.view.has #drop{display:none}
+.view.has.over #drop{display:flex;background:var(--acc)}
+.over #drop{background:var(--acc)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0}
+button,select,input[type=text]{font:inherit;color:var(--ink);border:2px solid var(--ink);border-radius:0;padding:8px 12px;background:var(--bg)}
+button{background:var(--acc);font-weight:600;cursor:pointer}
+button:hover,button.pri{background:var(--ink);color:var(--acc)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button:disabled:hover{background:var(--acc);color:var(--ink)}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+aside.panel{position:relative;border:2px solid var(--ink);display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg);padding:4px 16px 12px;height:100%;overflow-y:auto;scrollbar-width:none}
+aside.panel::-webkit-scrollbar{display:none}
+details{border-bottom:2px solid var(--ink);padding:14px 0}
+details:last-of-type{border-bottom:0}
+summary{cursor:pointer;font-weight:800;font-size:15px;list-style:none}
+summary::-webkit-details-marker{display:none}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;margin:10px 0 0}
+.row label{color:var(--ink);font-size:14px;font-weight:400;cursor:default}
+.row output{font-variant-numeric:tabular-nums;font-weight:600;font-size:14px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0;cursor:pointer;grid-column:1/-1}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--ink)}
+input[type=range]::-moz-range-track{height:4px;background:var(--ink)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-8px;background:var(--acc);border:2px solid var(--ink);border-radius:50%}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;background:var(--acc);border:2px solid var(--ink);border-radius:50%}
+.col{display:grid;grid-template-columns:1fr 44px 96px;gap:8px;align-items:center;margin-top:10px}
+.col label{width:auto;color:var(--ink);font-size:14px}
+input[type=color]{width:44px;height:36px;border:2px solid var(--ink);padding:0;background:var(--bg);cursor:pointer;border-radius:0}
+input[type=text]{width:96px;text-transform:uppercase;padding:6px 8px}
+select{width:100%;max-width:100%;min-width:0;margin-top:0;cursor:pointer;text-overflow:ellipsis}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.presets button{background:var(--acc);font-weight:600;padding:7px 6px;font-size:13px;border:2px solid var(--ink)}
+.presets button:hover{background:var(--ink);color:var(--acc)}
+.sw{display:flex;align-items:center;gap:10px;margin:10px 0 0;cursor:pointer;font-weight:600}
+.sw{position:relative}
+.sw input{position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;margin:0;pointer-events:none}
+.sw .t{width:42px;height:24px;border:2px solid var(--ink);background:var(--bg);position:relative;flex:none}
+.sw .t::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;background:var(--ink);transition:transform .12s}
+.sw input:checked+.t{background:var(--acc)}
+.sw input:checked+.t::after{transform:translateX(18px)}
+.sw input:focus-visible+.t{outline:3px solid var(--ink);outline-offset:2px}
+small{color:var(--ink);opacity:.7;font-size:12px;margin-top:6px;display:block}
+#swap{width:100%;margin-top:10px}
+@media(max-width:860px){body{grid-template-columns:1fr;overflow:auto;height:auto;padding:12px}main{height:auto;overflow:visible}aside.panel{position:relative;border:2px solid var(--ink);height:auto;overflow:visible}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>Studio Noir & Blanc</h1><span>Déposez une image, réglez, recolorez.</span></header>
+<section class="stage">
+  <div class="view" id="view">
+    <div id="drop" tabindex="0" role="button" aria-label="Choisir une image">
+      <strong>Glissez une image ici</strong>
+      <span>ou cliquez pour choisir (vous pouvez aussi coller avec Ctrl+V)</span>
+    </div>
+    <canvas id="out" hidden></canvas>
+  </div>
+  <div class="bar">
+    <button id="pick">Choisir une image</button>
+    <button id="cmp" disabled>Maintenir : voir l’original</button>
+    <button id="reset">Réinitialiser</button>
+  </div>
+  <small id="hint">Pour enregistrer le résultat : clic droit (ou appui long) sur l’image → « Enregistrer l’image ».</small>
+  <input type="file" id="file" accept="image/*" hidden>
+</section>
+</main>
+
+<aside class="panel">
+  <div class="presets" id="presets"></div>
+  <div id="groups"></div>
+</aside>
+
+<script>
+const $=id=>document.getElementById(id);
+const DEF={};
+const GROUPS=[
+ ['Conversion',[
+  ['mr','Rouge',0,1,.01,.2126],['mg','Vert',0,1,.01,.7152],['mb','Bleu',0,1,.01,.0722]],
+  `<div class="row"><label>Méthode</label><select id="mode" style="grid-column:1/-1"><option value="lum">Luminance (naturel)</option><option value="avg">Moyenne</option><option value="r">Filtre rouge</option><option value="g">Filtre vert</option><option value="b">Filtre bleu</option><option value="ir">Infrarouge (vert dominant)</option></select></div>`],
+ ['Tons',[
+  ['exp','Exposition',-2,2,.05,0],['bri','Luminosité',-1,1,.01,0],['con','Contraste',0,3,.01,1],
+  ['gam','Gamma',.2,3,.01,1],['blk','Point noir',0,1,.01,0],['wht','Point blanc',0,1,.01,1]]],
+ ['Détails & effets',[
+  ['blur','Flou',0,12,.1,0],['shp','Netteté',0,4,.05,0],['grn','Grain',0,1,.01,0],['vig','Vignette',-1,1,.01,0]]],
+ ['Sortie',[
+  ['lev','Niveaux',2,16,1,2],['thr','Seuil',0,1,.01,.5]],
+  `<div class="row"><label>Rendu</label><select id="rend" style="grid-column:1/-1"><option value="cont">Dégradé continu</option><option value="post">Postérisé (niveaux)</option><option value="thr">Seuil (noir/blanc pur)</option><option value="bay">Trame ordonnée (Bayer)</option><option value="fs">Diffusion d’erreur (Floyd-Steinberg)</option></select></div>
+   <label class="sw"><input type="checkbox" id="inv"><span class="t"></span>Inverser</label>`],
+];
+const PRESETS={
+ 'Neutre':{},
+ 'Contraste fort':{con:1.7,blk:.08,wht:.92},
+ 'Film noir':{con:1.9,exp:-.3,grn:.35,vig:.6,mr:.6,mg:.35,mb:.05},
+ 'Haute clé':{bri:.15,gam:1.5,con:.9},
+ 'Bitmap':{rend:'fs',lev:2},
+ 'Trame':{rend:'bay',lev:2,con:1.2},
+ 'Affiche':{rend:'post',lev:4,con:1.3},
+ 'Sépia':{c0:'#2b1a0e',c1:'#f3e2c0'},
+ 'Duotone':{c0:'#1b1464',c1:'#ff7a45'},
+ 'Cyanotype':{c0:'#06233f',c1:'#d9f1ff'},
+};
+const MIX={lum:[.2126,.7152,.0722],avg:[.333,.333,.333],r:[1,0,0],g:[0,1,0],b:[0,0,1],ir:[-.2,1.3,.1]};
+
+const gEl=$('groups');
+GROUPS.forEach(([title,sl,extra],i)=>{
+  const d=document.createElement('details');d.open=i<2||title==='Sortie';
+  let h=`<summary>${title}</summary>`;
+  if(title==='Conversion')h+=extra;
+  sl.forEach(([id,l,mn,mx,st,df])=>{DEF[id]=df;h+=`<div class="row"><label for="${id}" title="Double-clic pour réinitialiser">${l}</label><output id="o_${id}">${df}</output><input id="${id}" type="range" min="${mn}" max="${mx}" step="${st}" value="${df}"></div>`});
+  if(title!=='Conversion'&&extra)h+=extra;
+  d.innerHTML=h;gEl.appendChild(d);
+});
+const cd=document.createElement('details');cd.open=true;
+cd.innerHTML=`<summary>Couleurs</summary>
+<div class="col"><label>Noir →</label><input type="color" id="c0p" value="#000000"><input type="text" id="c0" value="#000000" maxlength="7" spellcheck="false"></div>
+<div class="col"><label>Blanc →</label><input type="color" id="c1p" value="#ffffff"><input type="text" id="c1" value="#ffffff" maxlength="7" spellcheck="false"></div>
+<button id="swap">Échanger les deux</button>`;
+gEl.appendChild(cd);
+DEF.mode='lum';DEF.rend='cont';DEF.inv=false;DEF.c0='#000000';DEF.c1='#ffffff';
+
+const val=id=>+$(id).value;
+function setVal(id,v){
+  const e=$(id);if(!e)return;
+  if(e.type==='checkbox')e.checked=v;else e.value=v;
+  if($('o_'+id))$('o_'+id).textContent=(+v).toFixed(2).replace(/\.?0+$/,'')||'0';
+  if(id==='c0'||id==='c1')$(id+'p').value=v;
+}
+function applyPreset(p){
+  const all={...DEF,...p};
+  Object.entries(all).forEach(([k,v])=>setVal(k,v));
+  schedule();
+}
+const pEl=$('presets');
+Object.keys(PRESETS).forEach(n=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>applyPreset(PRESETS[n]);pEl.appendChild(b)});
+
+const hexOk=s=>/^#[0-9a-f]{6}$/i.test(s);
+['c0','c1'].forEach(k=>{
+  $(k+'p').oninput=e=>{$(k).value=e.target.value;schedule()};
+  $(k).oninput=e=>{let s=e.target.value.trim();if(s&&s[0]!=='#')s='#'+s;if(s.length===4&&/^#[0-9a-f]{3}$/i.test(s))s='#'+[...s.slice(1)].map(c=>c+c).join('');if(hexOk(s)){$(k+'p').value=s;schedule()}};
+});
+$('swap').onclick=()=>{const a=$('c0').value,b=$('c1').value;setVal('c0',b);setVal('c1',a);schedule()};
+$('mode').onchange=e=>{const m=MIX[e.target.value];['mr','mg','mb'].forEach((k,i)=>setVal(k,m[i]));schedule()};
+document.querySelectorAll('input[type=range]').forEach(r=>{
+  r.oninput=()=>{setVal(r.id,r.value);schedule()};
+  r.previousElementSibling.ondblclick=()=>{setVal(r.id,DEF[r.id]);schedule()};
+});
+['rend','inv'].forEach(k=>$(k).onchange=schedule);
+$('reset').onclick=()=>applyPreset({});
+
+let img=null,W=0,H=0,raf=0,showOrig=false;
+const out=$('out'),ctx=out.getContext('2d',{willReadFrequently:true});
+const src=document.createElement('canvas'),sctx=src.getContext('2d',{willReadFrequently:true});
+const bl=document.createElement('canvas'),bctx=bl.getContext('2d',{willReadFrequently:true});
+
+function load(file){
+  if(!file||!file.type.startsWith('image/'))return;
+  const url=URL.createObjectURL(file),im=new Image();
+  im.onload=()=>{
+    const m=1800,s=Math.min(1,m/Math.max(im.width,im.height));
+    W=Math.round(im.width*s);H=Math.round(im.height*s);
+    out.width=src.width=bl.width=W;out.height=src.height=bl.height=H;
+    img=im;URL.revokeObjectURL(url);
+    $('drop').hidden=true;out.hidden=false;$('cmp').disabled=false;
+    $('view').classList.add('has');
+    schedule();
+  };
+  im.src=url;
+}
+$('pick').onclick=$('drop').onclick=()=>$('file').click();
+$('file').onchange=e=>load(e.target.files[0]);
+const dz=$('view');
+['dragenter','dragover'].forEach(t=>dz.addEventListener(t,e=>{e.preventDefault();dz.classList.add('over')}));
+['dragleave','drop'].forEach(t=>dz.addEventListener(t,e=>{e.preventDefault();dz.classList.remove('over')}));
+dz.addEventListener('drop',e=>load(e.dataTransfer.files[0]));
+addEventListener('paste',e=>{const f=[...e.clipboardData.files][0];if(f)load(f)});
+
+const cmp=$('cmp');
+const down=()=>{showOrig=true;schedule()},up=()=>{showOrig=false;schedule()};
+cmp.addEventListener('pointerdown',down);['pointerup','pointerleave','pointercancel'].forEach(t=>cmp.addEventListener(t,up));
+
+function schedule(){if(!raf)raf=requestAnimationFrame(()=>{raf=0;render()})}
+const hex2rgb=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16));
+const BAY=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
+function hash(i){i=(i^61)^(i>>>16);i=Math.imul(i,9);i^=i>>>4;i=Math.imul(i,0x27d4eb2d);i^=i>>>15;return(i>>>0)/4294967296}
+
+function render(){
+  if(!img)return;
+  if(showOrig){ctx.filter='none';ctx.drawImage(img,0,0,W,H);return}
+  const b=val('blur'),shp=val('shp');
+  sctx.filter=b>0?`blur(${b}px)`:'none';sctx.clearRect(0,0,W,H);sctx.drawImage(img,0,0,W,H);
+  const d=sctx.getImageData(0,0,W,H).data;
+  const mr=val('mr'),mg=val('mg'),mb=val('mb'),n=W*H;
+  const G=new Float32Array(n);
+  for(let i=0;i<n;i++)G[i]=(d[i*4]*mr+d[i*4+1]*mg+d[i*4+2]*mb)/255;
+  if(shp>0){
+    bctx.filter=`blur(${b+2}px)`;bctx.clearRect(0,0,W,H);bctx.drawImage(img,0,0,W,H);
+    const e=bctx.getImageData(0,0,W,H).data;
+    for(let i=0;i<n;i++){const bg=(e[i*4]*mr+e[i*4+1]*mg+e[i*4+2]*mb)/255;G[i]+=shp*(G[i]-bg)}
+  }
+  const ex=Math.pow(2,val('exp')),bk=val('blk'),wh=Math.max(val('wht'),bk+.01),
+    gm=1/val('gam'),con=val('con'),bri=val('bri'),grn=val('grn'),vig=val('vig'),inv=$('inv').checked;
+  const cx=W/2,cy=H/2,rm=Math.hypot(cx,cy);
+  for(let y=0,i=0;y<H;y++)for(let x=0;x<W;x++,i++){
+    let g=G[i]*ex;
+    g=(g-bk)/(wh-bk);g=g<0?0:g;
+    g=Math.pow(g,gm);
+    g=(g-.5)*con+.5+bri;
+    if(grn)g+=(hash(i)-.5)*grn;
+    if(vig){const r=Math.hypot(x-cx,y-cy)/rm;g-=vig*r*r*r*1.2}
+    g=g<0?0:g>1?1:g;
+    G[i]=inv?1-g:g;
+  }
+  const rend=$('rend').value,L=Math.max(2,val('lev')),thr=val('thr');
+  if(rend==='thr'){for(let i=0;i<n;i++)G[i]=G[i]>=thr?1:0}
+  else if(rend==='post'){for(let i=0;i<n;i++)G[i]=Math.round(G[i]*(L-1))/(L-1)}
+  else if(rend==='bay'){for(let y=0,i=0;y<H;y++)for(let x=0;x<W;x++,i++){
+    const t=(BAY[(y&3)*4+(x&3)]+.5)/16-.5;
+    const v=Math.round((G[i]+t/(L-1))*(L-1))/(L-1);G[i]=v<0?0:v>1?1:v}}
+  else if(rend==='fs'){for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=y*W+x,o=G[i],q=Math.round(o*(L-1))/(L-1),er=o-q;G[i]=q;
+    if(x+1<W)G[i+1]+=er*7/16;
+    if(y+1<H){if(x>0)G[i+W-1]+=er*3/16;G[i+W]+=er*5/16;if(x+1<W)G[i+W+1]+=er/16}}}
+  const c0=hex2rgb(hexOk($('c0').value)?$('c0p').value:$('c0').value),c1=hex2rgb(hexOk($('c1').value)?$('c1p').value:$('c1').value);
+  const o=ctx.createImageData(W,H),od=o.data;
+  for(let i=0;i<n;i++){
+    const g=G[i]<0?0:G[i]>1?1:G[i],k=i*4;
+    od[k]=c0[0]+(c1[0]-c0[0])*g;od[k+1]=c0[1]+(c1[1]-c0[1])*g;od[k+2]=c0[2]+(c1[2]-c0[2])*g;od[k+3]=255;
+  }
+  ctx.filter='none';ctx.putImageData(o,0,0);
+}
+</script>
+</body>
+</html>

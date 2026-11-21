@@ -1,0 +1,2034 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Studio Filtres</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* === VARIABLES & BASE (DA stricte Studio Noir & Blanc) === */
+:root{
+  --bg:#FFFFFF;
+  --ink:#000000;
+  --acc:#D4FF00;
+  color-scheme:light;
+  box-sizing:border-box;
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font:400 14px/1.4 "Bricolage Grotesque",system-ui,sans-serif;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 380px;
+  gap:16px;
+  padding:16px;
+  height:100vh;
+}
+
+/* === ZONE GAUCHE (main) === */
+main{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:0;
+  min-width:0;
+  min-height:0;
+  height:100%;
+  overflow:hidden;
+}
+header{
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+  flex-wrap:wrap;
+  flex-shrink:0;
+}
+h1{font-size:28px;line-height:1;font-weight:800;margin:0;letter-spacing:-.02em}
+header span{color:var(--ink);opacity:.6;font-size:14px}
+h2{font-size:15px;font-weight:800;margin:0 0 4px}
+p{margin:0}
+
+.stage{
+  position:relative;
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  border:2px solid var(--ink);
+  overflow:hidden;
+  padding:12px;
+  background:var(--bg);
+}
+.view{
+  position:relative;
+  width:100%;
+  flex:1;
+  min-height:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+canvas{
+  display:none;
+  max-width:100%;
+  max-height:100%;
+  width:auto;
+  height:auto;
+  touch-action:manipulation;
+  user-select:none;
+  -webkit-touch-callout:none;
+  border:2px solid var(--ink);
+}
+.view.has canvas{display:block}
+
+#drop{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  text-align:center;
+  cursor:pointer;
+  background:var(--bg);
+  outline:2px dashed var(--ink);
+  outline-offset:-14px;
+  padding:30px;
+}
+#drop strong{font-size:24px;font-weight:800}
+.view.has #drop{display:none}
+.view.has.over #drop{display:flex;background:var(--acc)}
+.over #drop{background:var(--acc)}
+
+.bar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+}
+
+/* === CONTRÔLES GÉNÉRAUX === */
+button,select,input[type=text]{
+  font:inherit;
+  color:var(--ink);
+  border:2px solid var(--ink);
+  border-radius:0;
+  padding:8px 12px;
+  background:var(--bg);
+}
+button{
+  background:var(--acc);
+  font-weight:600;
+  cursor:pointer;
+}
+button:hover,button.pri{background:var(--ink);color:var(--acc)}
+button.pri:hover{background:var(--acc);color:var(--ink)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button:disabled:hover{background:var(--acc);color:var(--ink)}
+button.pri:disabled:hover{background:var(--ink);color:var(--acc)}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+
+small{
+  color:var(--ink);
+  opacity:.7;
+  font-size:12px;
+  margin-top:2px;
+  display:block;
+  font-variant-numeric:tabular-nums;
+}
+
+/* === ZONE DROITE (aside.panel) === */
+aside.panel{
+  position:relative;
+  border:2px solid var(--ink);
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  min-height:0;
+  background:var(--bg);
+  padding:4px 16px 16px;
+  height:100%;
+  overflow-y:auto;
+  scrollbar-width:none;
+}
+aside.panel::-webkit-scrollbar{display:none}
+
+details.sec{
+  border-bottom:2px solid var(--ink);
+  padding:14px 0;
+}
+details.sec:last-of-type{border-bottom:0}
+details.sec > summary{
+  cursor:pointer;
+  font-weight:800;
+  font-size:15px;
+  list-style:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+details.sec > summary::-webkit-details-marker{display:none}
+details.sec > summary::after{content:"+";font-weight:800;font-size:16px;line-height:1}
+details.sec[open] > summary::after{content:"−"}
+
+/* Presets de combinaisons */
+.presets{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:10px;
+}
+.presets button{
+  background:var(--acc);
+  font-weight:600;
+  padding:6px 8px;
+  font-size:13px;
+  border:2px solid var(--ink);
+}
+.presets button:hover{background:var(--ink);color:var(--acc)}
+
+/* Onglets de catégories & catalogue d'ajout */
+.cats{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:10px;
+}
+.cats button{
+  background:var(--bg);
+  color:var(--ink);
+  padding:5px 8px;
+  font-size:12px;
+  font-weight:600;
+}
+.cats button:hover,
+.cats button.active{
+  background:var(--ink);
+  color:var(--acc);
+}
+
+.cat-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  margin-top:10px;
+  max-height:210px;
+  overflow-y:auto;
+  padding:2px;
+  scrollbar-width:thin;
+}
+.cat-grid button{
+  text-align:left;
+  padding:6px 8px;
+  font-size:12px;
+  line-height:1.2;
+  background:var(--bg);
+  color:var(--ink);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:4px;
+}
+.cat-grid button:hover{
+  background:var(--acc);
+  color:var(--ink);
+}
+.cat-grid button::after{
+  content:"+";
+  font-weight:800;
+  font-size:14px;
+  flex-shrink:0;
+}
+
+/* === PILE ACTIVE === */
+.stack-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:14px 0 8px;
+}
+.stack-head h2{
+  margin:0;
+  font-size:15px;
+  font-weight:800;
+}
+.stack-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.empty-stack{
+  border:2px dashed var(--ink);
+  padding:16px 12px;
+  text-align:center;
+  font-size:13px;
+  opacity:.75;
+}
+
+/* Carte de filtre dans la pile */
+.fcard{
+  border:2px solid var(--ink);
+  background:var(--bg);
+}
+.fcard.off{
+  opacity:.55;
+}
+.fcard-hd{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 8px;
+  background:var(--bg);
+  border-bottom:2px solid var(--ink);
+}
+.fcard.collapsed .fcard-hd{
+  border-bottom:0;
+}
+.fcard-chk{
+  appearance:none;
+  -webkit-appearance:none;
+  width:18px;
+  height:18px;
+  border:2px solid var(--ink);
+  background:var(--bg);
+  margin:0;
+  cursor:pointer;
+  flex:none;
+  position:relative;
+}
+.fcard-chk:checked{
+  background:var(--acc);
+}
+.fcard-chk:checked::after{
+  content:"";
+  position:absolute;
+  inset:3px;
+  background:var(--ink);
+}
+.fcard-name{
+  flex:1;
+  min-width:0;
+  background:transparent;
+  border:0;
+  padding:2px 4px;
+  text-align:left;
+  font-weight:800;
+  font-size:13px;
+  color:var(--ink);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.fcard-name:hover{
+  background:var(--acc);
+  color:var(--ink);
+}
+.fcard-acts{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  flex-shrink:0;
+}
+.fcard-acts button{
+  width:24px;
+  height:24px;
+  padding:0;
+  font-size:12px;
+  line-height:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--bg);
+  color:var(--ink);
+}
+.fcard-acts button:hover{
+  background:var(--ink);
+  color:var(--acc);
+}
+.fcard-acts button:disabled:hover{
+  background:var(--bg);
+  color:var(--ink);
+}
+
+.fcard-bd{
+  padding:4px 10px 12px;
+}
+.fcard.collapsed .fcard-bd{
+  display:none;
+}
+
+/* === CONTRÔLES DE PARAMÈTRES (Sliders, Couleurs, Selects, Switches) === */
+.row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:2px 8px;
+  margin:10px 0 0;
+}
+.row label{
+  color:var(--ink);
+  font-size:13px;
+  font-weight:400;
+  cursor:default;
+}
+.row output{
+  font-variant-numeric:tabular-nums;
+  font-weight:600;
+  font-size:13px;
+}
+
+input[type=range]{
+  -webkit-appearance:none;
+  appearance:none;
+  width:100%;
+  height:22px;
+  background:transparent;
+  margin:0;
+  cursor:pointer;
+  grid-column:1/-1;
+}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--ink)}
+input[type=range]::-moz-range-track{height:4px;background:var(--ink)}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:20px;
+  height:20px;
+  margin-top:-8px;
+  background:var(--acc);
+  border:2px solid var(--ink);
+  border-radius:50%;
+}
+input[type=range]::-moz-range-thumb{
+  width:16px;
+  height:16px;
+  background:var(--acc);
+  border:2px solid var(--ink);
+  border-radius:50%;
+}
+
+.col{
+  display:grid;
+  grid-template-columns:1fr 40px 88px;
+  gap:8px;
+  align-items:center;
+  margin-top:10px;
+}
+.col label{font-size:13px;color:var(--ink)}
+input[type=color]{
+  width:40px;
+  height:32px;
+  border:2px solid var(--ink);
+  padding:0;
+  background:var(--bg);
+  cursor:pointer;
+  border-radius:0;
+}
+.col input[type=text]{
+  width:88px;
+  text-transform:uppercase;
+  padding:5px 6px;
+  font-size:13px;
+}
+select{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  margin-top:4px;
+  padding:6px 8px;
+  font-size:13px;
+  cursor:pointer;
+  text-overflow:ellipsis;
+  grid-column:1/-1;
+}
+
+/* Switch personnalisé (.sw) */
+.sw{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:10px 0 0;
+  cursor:pointer;
+  font-weight:600;
+  font-size:13px;
+}
+.sw input{
+  position:absolute;
+  left:0;
+  top:0;
+  width:1px;
+  height:1px;
+  opacity:0;
+  margin:0;
+  pointer-events:none;
+}
+.sw .t{
+  width:42px;
+  height:24px;
+  border:2px solid var(--ink);
+  background:var(--bg);
+  position:relative;
+  flex:none;
+}
+.sw .t::after{
+  content:"";
+  position:absolute;
+  top:2px;
+  left:2px;
+  width:16px;
+  height:16px;
+  background:var(--ink);
+  transition:transform .12s;
+}
+.sw input:checked+.t{background:var(--acc)}
+.sw input:checked+.t::after{transform:translateX(18px)}
+.sw input:focus-visible+.t{outline:3px solid var(--ink);outline-offset:2px}
+
+/* === RESPONSIVE === */
+@media(max-width:900px){
+  html,body{overflow:auto;height:auto}
+  body{
+    grid-template-columns:1fr;
+    overflow:auto;
+    height:auto;
+    padding:12px;
+  }
+  main{height:auto;overflow:visible}
+  .stage{min-height:380px}
+  .view{min-height:260px}
+  aside.panel{
+    position:relative;
+    border:2px solid var(--ink);
+    height:auto;
+    overflow:visible;
+  }
+}
+</style>
+</head>
+<body>
+
+<main>
+  <header>
+    <h1>Studio Filtres</h1>
+    <span>Empilez, réglez et combinez vos filtres en temps réel.</span>
+  </header>
+
+  <section class="stage">
+    <div class="view" id="view">
+      <div id="drop" tabindex="0" role="button" aria-label="Choisir une image">
+        <strong>Glissez une image ici</strong>
+        <span>ou cliquez pour choisir (vous pouvez aussi coller avec Ctrl+V)</span>
+      </div>
+      <canvas id="out"></canvas>
+    </div>
+
+    <div class="bar">
+      <button id="pick" type="button">Choisir une image</button>
+      <button id="cmp" type="button" disabled>Maintenir : voir l’original</button>
+      <button id="clearStack" type="button" disabled>Vider la pile</button>
+      <button id="download" type="button" class="pri" disabled>Télécharger PNG</button>
+    </div>
+
+    <small id="info">Aucune image chargée • 0 filtre actif</small>
+    <input type="file" id="file" accept="image/*" hidden>
+  </section>
+</main>
+
+<aside class="panel">
+  <!-- 1. Presets de combinaisons -->
+  <details class="sec" open>
+    <summary>Presets de combinaisons</summary>
+    <div class="presets" id="presets"></div>
+  </details>
+
+  <!-- 2. Catalogue d'ajout de filtres -->
+  <details class="sec" open>
+    <summary>Ajouter un filtre</summary>
+    <div class="cats" id="cats"></div>
+    <div class="cat-grid" id="catGrid"></div>
+  </details>
+
+  <!-- 3. Pile active -->
+  <div class="stack-head">
+    <h2 id="stackTitle">Pile active (0)</h2>
+  </div>
+  <div class="stack-list" id="stackList"></div>
+</aside>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  // =========================================================================
+  // 1. UTILITAIRES MATHÉMATIQUES & COULEURS
+  // =========================================================================
+  const clamp255 = v => v < 0 ? 0 : v > 255 ? 255 : v;
+  const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+  const hexOk = s => /^#[0-9a-f]{6}$/i.test(s);
+  const hex2rgb = h => {
+    const s = hexOk(h) ? h : '#000000';
+    return [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)];
+  };
+  const fmtNum = v => {
+    const n = +v;
+    return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
+  };
+
+  // Hash rapide déterministe pour le grain et le glitch
+  function hash32(i) {
+    i = (i ^ 61) ^ (i >>> 16);
+    i = Math.imul(i, 9);
+    i ^= i >>> 4;
+    i = Math.imul(i, 0x27d4eb2d);
+    i ^= i >>> 15;
+    return (i >>> 0) / 4294967296;
+  }
+
+  // Matrice Bayer 4x4 pour tramage ordonné
+  const BAYER4 = [
+    0, 8, 2, 10,
+    12, 4, 14, 6,
+    3, 11, 1, 9,
+    15, 7, 13, 5
+  ];
+
+  // Mixages Noir & Blanc
+  const BW_MIX = {
+    lum: [0.2126, 0.7152, 0.0722],
+    avg: [0.3333, 0.3333, 0.3333],
+    r:   [1, 0, 0],
+    g:   [0, 1, 0],
+    b:   [0, 0, 1],
+    ir:  [-0.2, 1.3, 0.1]
+  };
+
+  // Palettes pour la Carte Thermique (pré-calculées en LUT 256 entrées RGB)
+  const THERMAL_STOPS = {
+    thermal: [[0,0,40], [70,0,140], [200,20,80], [255,140,0], [255,255,200]],
+    acid:    [[0,0,0], [35,0,90], [0,180,120], [212,255,0], [255,255,255]],
+    cyber:   [[8,10,30], [0,95,210], [0,235,255], [255,0,170], [255,245,255]],
+    sunset:  [[20,10,45], [130,25,95], [235,85,65], [255,185,60], [255,248,210]],
+    riso:    [[15,25,110], [0,125,180], [255,75,110], [255,215,50], [250,248,240]]
+  };
+
+  const THERMAL_LUTS = {};
+  Object.entries(THERMAL_STOPS).forEach(([key, stops]) => {
+    const lut = new Uint8Array(256 * 3);
+    const segs = stops.length - 1;
+    for (let i = 0; i < 256; i++) {
+      const t = (i / 255) * segs;
+      const idx = Math.min(segs - 1, Math.floor(t));
+      const f = t - idx;
+      const a = stops[idx], b = stops[idx + 1];
+      lut[i * 3]     = Math.round(a[0] + (b[0] - a[0]) * f);
+      lut[i * 3 + 1] = Math.round(a[1] + (b[1] - a[1]) * f);
+      lut[i * 3 + 2] = Math.round(a[2] + (b[2] - a[2]) * f);
+    }
+    THERMAL_LUTS[key] = lut;
+  });
+
+  // =========================================================================
+  // 2. CATALOGUE COMPLET DES 24 FILTRES
+  // =========================================================================
+  const CATEGORIES = [
+    { id: 'all',     label: 'Tous' },
+    { id: 'couleur', label: 'Couleur' },
+    { id: 'graph',   label: 'Graphique' },
+    { id: 'glitch',  label: 'Glitch' },
+    { id: 'optique', label: 'Optique' }
+  ];
+
+  // Chaque définition possède : id, name, cat, params[], apply(ctx, tmpCanvas, tmpCtx, W, H, p)
+  const FILTERS = [
+    // --- COULEUR (1 à 8) ---
+    {
+      id: 'expcon',
+      name: 'Exposition & Contraste',
+      cat: 'couleur',
+      params: [
+        { k: 'exp', l: 'Exposition', t: 'range', min: -2, max: 2, step: 0.05, def: 0 },
+        { k: 'bri', l: 'Luminosité', t: 'range', min: -1, max: 1, step: 0.01, def: 0 },
+        { k: 'con', l: 'Contraste',  t: 'range', min: 0,  max: 3, step: 0.01, def: 1 },
+        { k: 'gam', l: 'Gamma',      t: 'range', min: 0.2, max: 3, step: 0.01, def: 1 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const ex = Math.pow(2, p.exp);
+        const invG = 1 / p.gam;
+        const con = p.con, bri = p.bri;
+        // Table de correspondance 256 niveaux pour un calcul instantané
+        const lut = new Uint8Array(256);
+        for (let i = 0; i < 256; i++) {
+          let v = (i / 255) * ex;
+          v = v < 0 ? 0 : v > 1 ? 1 : v;
+          v = Math.pow(v, invG);
+          v = (v - 0.5) * con + 0.5 + bri;
+          lut[i] = clamp255(Math.round(v * 255));
+        }
+        for (let i = 0; i < d.length; i += 4) {
+          d[i]     = lut[d[i]];
+          d[i + 1] = lut[d[i + 1]];
+          d[i + 2] = lut[d[i + 2]];
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'hsl',
+      name: 'Teinte & Saturation',
+      cat: 'couleur',
+      params: [
+        { k: 'hue', l: 'Teinte (°)', t: 'range', min: -180, max: 180, step: 1, def: 0 },
+        { k: 'sat', l: 'Saturation', t: 'range', min: 0, max: 3, step: 0.01, def: 1 },
+        { k: 'lum', l: 'Luminance',  t: 'range', min: -0.5, max: 0.5, step: 0.01, def: 0 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const hShift = ((p.hue % 360) + 360) % 360 / 360;
+        const satM = p.sat, lumA = p.lum;
+        for (let i = 0; i < d.length; i += 4) {
+          let r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255;
+          const max = r > g ? (r > b ? r : b) : (g > b ? g : b);
+          const min = r < g ? (r < b ? r : b) : (g < b ? g : b);
+          let h = 0, s = 0, l = (max + min) * 0.5;
+          if (max !== min) {
+            const diff = max - min;
+            s = l > 0.5 ? diff / (2 - max - min) : diff / (max + min);
+            if (max === r) h = (g - b) / diff + (g < b ? 6 : 0);
+            else if (max === g) h = (b - r) / diff + 2;
+            else h = (r - g) / diff + 4;
+            h /= 6;
+          }
+          h = (h + hShift) % 1;
+          s = clamp01(s * satM);
+          l = clamp01(l + lumA);
+          if (s === 0) {
+            const v = Math.round(l * 255);
+            d[i] = d[i + 1] = d[i + 2] = v;
+          } else {
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const pv = 2 * l - q;
+            const hue2rgb = t => {
+              if (t < 0) t += 1;
+              if (t > 1) t -= 1;
+              if (t < 1 / 6) return pv + (q - pv) * 6 * t;
+              if (t < 1 / 2) return q;
+              if (t < 2 / 3) return pv + (q - pv) * (2 / 3 - t) * 6;
+              return pv;
+            };
+            d[i]     = Math.round(hue2rgb(h + 1 / 3) * 255);
+            d[i + 1] = Math.round(hue2rgb(h) * 255);
+            d[i + 2] = Math.round(hue2rgb(h - 1 / 3) * 255);
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'rgb',
+      name: 'Balance RGB',
+      cat: 'couleur',
+      params: [
+        { k: 'r', l: 'Rouge', t: 'range', min: 0, max: 2, step: 0.01, def: 1 },
+        { k: 'g', l: 'Vert',  t: 'range', min: 0, max: 2, step: 0.01, def: 1 },
+        { k: 'b', l: 'Bleu',  t: 'range', min: 0, max: 2, step: 0.01, def: 1 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const mr = p.r, mg = p.g, mb = p.b;
+        for (let i = 0; i < d.length; i += 4) {
+          d[i]     = clamp255(d[i] * mr);
+          d[i + 1] = clamp255(d[i + 1] * mg);
+          d[i + 2] = clamp255(d[i + 2] * mb);
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'bw',
+      name: 'Noir & Blanc',
+      cat: 'couleur',
+      params: [
+        {
+          k: 'mode', l: 'Méthode', t: 'select', def: 'lum',
+          opts: [
+            ['lum', 'Luminance (naturel)'],
+            ['avg', 'Moyenne'],
+            ['r',   'Filtre rouge'],
+            ['g',   'Filtre vert'],
+            ['b',   'Filtre bleu'],
+            ['ir',  'Infrarouge']
+          ]
+        },
+        { k: 'mix', l: 'Intensité', t: 'range', min: 0, max: 1, step: 0.01, def: 1 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const [mr, mg, mb] = BW_MIX[p.mode] || BW_MIX.lum;
+        const m = p.mix, im = 1 - m;
+        for (let i = 0; i < d.length; i += 4) {
+          const g = clamp255(d[i] * mr + d[i + 1] * mg + d[i + 2] * mb);
+          d[i]     = d[i] * im + g * m;
+          d[i + 1] = d[i + 1] * im + g * m;
+          d[i + 2] = d[i + 2] * im + g * m;
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'duotone',
+      name: 'Duotone / Bichromie',
+      cat: 'couleur',
+      params: [
+        { k: 'c0',  l: 'Sombre →',  t: 'color', def: '#000000' },
+        { k: 'c1',  l: 'Clair →',   t: 'color', def: '#D4FF00' },
+        { k: 'mix', l: 'Intensité', t: 'range', min: 0, max: 1, step: 0.01, def: 1 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const c0 = hex2rgb(p.c0), c1 = hex2rgb(p.c1);
+        const m = p.mix, im = 1 - m;
+        for (let i = 0; i < d.length; i += 4) {
+          const g = (d[i] * 0.2126 + d[i + 1] * 0.7152 + d[i + 2] * 0.0722) / 255;
+          const r = c0[0] + (c1[0] - c0[0]) * g;
+          const gr = c0[1] + (c1[1] - c0[1]) * g;
+          const b = c0[2] + (c1[2] - c0[2]) * g;
+          d[i]     = d[i] * im + r * m;
+          d[i + 1] = d[i + 1] * im + gr * m;
+          d[i + 2] = d[i + 2] * im + b * m;
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'thermal',
+      name: 'Carte Thermique',
+      cat: 'couleur',
+      params: [
+        {
+          k: 'pal', l: 'Palette', t: 'select', def: 'thermal',
+          opts: [
+            ['thermal', 'Thermique'],
+            ['acid',    'Acid'],
+            ['cyber',   'Cyber'],
+            ['sunset',  'Sunset'],
+            ['riso',    'Riso']
+          ]
+        },
+        { k: 'mix', l: 'Intensité', t: 'range', min: 0, max: 1, step: 0.01, def: 1 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const lut = THERMAL_LUTS[p.pal] || THERMAL_LUTS.thermal;
+        const m = p.mix, im = 1 - m;
+        for (let i = 0; i < d.length; i += 4) {
+          const idx = Math.round(d[i] * 0.2126 + d[i + 1] * 0.7152 + d[i + 2] * 0.0722) * 3;
+          d[i]     = d[i] * im + lut[idx] * m;
+          d[i + 1] = d[i + 1] * im + lut[idx + 1] * m;
+          d[i + 2] = d[i + 2] * im + lut[idx + 2] * m;
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'invert',
+      name: 'Inversion / Négatif',
+      cat: 'couleur',
+      params: [
+        { k: 'mix', l: 'Intensité', t: 'range', min: 0, max: 1, step: 0.01, def: 1 },
+        {
+          k: 'ch', l: 'Canal', t: 'select', def: 'all',
+          opts: [
+            ['all', 'Tous les canaux'],
+            ['r',   'Rouge'],
+            ['g',   'Vert'],
+            ['b',   'Bleu']
+          ]
+        }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const m = p.mix, im = 1 - m;
+        const doR = p.ch === 'all' || p.ch === 'r';
+        const doG = p.ch === 'all' || p.ch === 'g';
+        const doB = p.ch === 'all' || p.ch === 'b';
+        for (let i = 0; i < d.length; i += 4) {
+          if (doR) d[i]     = d[i] * im + (255 - d[i]) * m;
+          if (doG) d[i + 1] = d[i + 1] * im + (255 - d[i + 1]) * m;
+          if (doB) d[i + 2] = d[i + 2] * im + (255 - d[i + 2]) * m;
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'temp',
+      name: 'Température & Sépia',
+      cat: 'couleur',
+      params: [
+        { k: 'warm',  l: 'Chaleur', t: 'range', min: -1, max: 1, step: 0.01, def: 0 },
+        { k: 'sepia', l: 'Sépia',   t: 'range', min: 0,  max: 1, step: 0.01, def: 0 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const w = p.warm * 55;
+        const s = p.sepia, is = 1 - s;
+        for (let i = 0; i < d.length; i += 4) {
+          let r = clamp255(d[i] + w);
+          let g = clamp255(d[i + 1] + w * 0.15);
+          let b = clamp255(d[i + 2] - w);
+          if (s > 0) {
+            const sr = r * 0.393 + g * 0.769 + b * 0.189;
+            const sg = r * 0.349 + g * 0.686 + b * 0.168;
+            const sb = r * 0.272 + g * 0.534 + b * 0.131;
+            r = clamp255(r * is + sr * s);
+            g = clamp255(g * is + sg * s);
+            b = clamp255(b * is + sb * s);
+          }
+          d[i] = r; d[i + 1] = g; d[i + 2] = b;
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+
+    // --- GRAPHIQUE & TRAME (9 à 14) ---
+    {
+      id: 'poster',
+      name: 'Postérisation',
+      cat: 'graph',
+      params: [
+        { k: 'lev', l: 'Niveaux', t: 'range', min: 2, max: 16, step: 1, def: 4 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const steps = Math.max(1, p.lev - 1);
+        const lut = new Uint8Array(256);
+        for (let i = 0; i < 256; i++) {
+          lut[i] = Math.round(Math.round((i / 255) * steps) / steps * 255);
+        }
+        for (let i = 0; i < d.length; i += 4) {
+          d[i] = lut[d[i]]; d[i + 1] = lut[d[i + 1]]; d[i + 2] = lut[d[i + 2]];
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'thresh',
+      name: 'Seuil / Threshold',
+      cat: 'graph',
+      params: [
+        { k: 'thr', l: 'Seuil',    t: 'range', min: 0, max: 1, step: 0.01, def: 0.5 },
+        { k: 'c0',  l: 'Sombre →', t: 'color', def: '#000000' },
+        { k: 'c1',  l: 'Clair →',  t: 'color', def: '#FFFFFF' },
+        { k: 'inv', l: 'Inverser', t: 'switch', def: false }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const thr = p.thr * 255;
+        const c0 = hex2rgb(p.c0), c1 = hex2rgb(p.c1);
+        const inv = p.inv;
+        for (let i = 0; i < d.length; i += 4) {
+          const lum = d[i] * 0.2126 + d[i + 1] * 0.7152 + d[i + 2] * 0.0722;
+          let high = lum >= thr;
+          if (inv) high = !high;
+          const c = high ? c1 : c0;
+          d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2];
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'dither',
+      name: 'Tramage / Dithering',
+      cat: 'graph',
+      params: [
+        {
+          k: 'method', l: 'Méthode', t: 'select', def: 'bayer',
+          opts: [
+            ['bayer', 'Bayer 4×4 (ordonné)'],
+            ['fs',    'Floyd-Steinberg']
+          ]
+        },
+        { k: 'lev', l: 'Niveaux', t: 'range', min: 2, max: 8, step: 1, def: 2 },
+        {
+          k: 'mode', l: 'Mode', t: 'select', def: 'bw',
+          opts: [
+            ['bw',    'Noir & Blanc'],
+            ['color', 'Couleur']
+          ]
+        }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const L = Math.max(2, p.lev);
+        const step = L - 1;
+        const isBW = p.mode === 'bw';
+
+        if (p.method === 'bayer') {
+          for (let y = 0, idx = 0; y < H; y++) {
+            const by = (y & 3) * 4;
+            for (let x = 0; x < W; x++, idx += 4) {
+              const t = ((BAYER4[by + (x & 3)] + 0.5) / 16 - 0.5) / step;
+              if (isBW) {
+                const g = (d[idx] * 0.2126 + d[idx + 1] * 0.7152 + d[idx + 2] * 0.0722) / 255;
+                const q = Math.round(clamp01(Math.round((g + t) * step) / step) * 255);
+                d[idx] = d[idx + 1] = d[idx + 2] = q;
+              } else {
+                for (let c = 0; c < 3; c++) {
+                  const v = d[idx + c] / 255;
+                  d[idx + c] = Math.round(clamp01(Math.round((v + t) * step) / step) * 255);
+                }
+              }
+            }
+          }
+        } else {
+          // Diffusion d'erreur Floyd-Steinberg
+          if (isBW) {
+            const buf = new Float32Array(W * H);
+            for (let i = 0, k = 0; i < buf.length; i++, k += 4) {
+              buf[i] = (d[k] * 0.2126 + d[k + 1] * 0.7152 + d[k + 2] * 0.0722) / 255;
+            }
+            for (let y = 0; y < H; y++) {
+              for (let x = 0; x < W; x++) {
+                const i = y * W + x;
+                const oldV = buf[i];
+                const newV = clamp01(Math.round(oldV * step) / step);
+                const err = oldV - newV;
+                buf[i] = newV;
+                if (x + 1 < W) buf[i + 1] += err * 7 / 16;
+                if (y + 1 < H) {
+                  if (x > 0) buf[i + W - 1] += err * 3 / 16;
+                  buf[i + W] += err * 5 / 16;
+                  if (x + 1 < W) buf[i + W + 1] += err / 16;
+                }
+              }
+            }
+            for (let i = 0, k = 0; i < buf.length; i++, k += 4) {
+              const v = clamp255(Math.round(buf[i] * 255));
+              d[k] = d[k + 1] = d[k + 2] = v;
+            }
+          } else {
+            const buf = new Float32Array(W * H * 3);
+            for (let i = 0, j = 0; i < d.length; i += 4, j += 3) {
+              buf[j] = d[i] / 255; buf[j + 1] = d[i + 1] / 255; buf[j + 2] = d[i + 2] / 255;
+            }
+            for (let y = 0; y < H; y++) {
+              for (let x = 0; x < W; x++) {
+                const base = (y * W + x) * 3;
+                for (let c = 0; c < 3; c++) {
+                  const oldV = buf[base + c];
+                  const newV = clamp01(Math.round(oldV * step) / step);
+                  const err = oldV - newV;
+                  buf[base + c] = newV;
+                  if (x + 1 < W) buf[base + 3 + c] += err * 7 / 16;
+                  if (y + 1 < H) {
+                    const nextRow = base + W * 3;
+                    if (x > 0) buf[nextRow - 3 + c] += err * 3 / 16;
+                    buf[nextRow + c] += err * 5 / 16;
+                    if (x + 1 < W) buf[nextRow + 3 + c] += err / 16;
+                  }
+                }
+              }
+            }
+            for (let i = 0, j = 0; i < d.length; i += 4, j += 3) {
+              d[i]     = clamp255(Math.round(buf[j] * 255));
+              d[i + 1] = clamp255(Math.round(buf[j + 1] * 255));
+              d[i + 2] = clamp255(Math.round(buf[j + 2] * 255));
+            }
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'halftone',
+      name: 'Trame Halftone',
+      cat: 'graph',
+      params: [
+        { k: 'size', l: 'Taille grille (px)', t: 'range', min: 4, max: 28, step: 1, def: 10 },
+        { k: 'con',  l: 'Contraste',          t: 'range', min: 0.5, max: 2, step: 0.05, def: 1.15 },
+        {
+          k: 'mode', l: 'Mode', t: 'select', def: 'color',
+          opts: [
+            ['color', 'Couleur'],
+            ['bw',    'Noir & Blanc']
+          ]
+        },
+        { k: 'bg', l: 'Fond →', t: 'color', def: '#FFFFFF' }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const srcData = ctx.getImageData(0, 0, W, H).data;
+        const step = Math.max(4, Math.round(p.size));
+        const half = step * 0.5;
+        const maxR = step * 0.56;
+        const isBW = p.mode === 'bw';
+
+        ctx.fillStyle = hexOk(p.bg) ? p.bg : '#FFFFFF';
+        ctx.fillRect(0, 0, W, H);
+        if (isBW) ctx.fillStyle = '#000000';
+
+        for (let y = 0; y < H; y += step) {
+          const cy = Math.min(H - 1, Math.floor(y + half));
+          for (let x = 0; x < W; x += step) {
+            const cx = Math.min(W - 1, Math.floor(x + half));
+            const idx = (cy * W + cx) * 4;
+            const r = srcData[idx], g = srcData[idx + 1], b = srcData[idx + 2];
+            const lum = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 255;
+            const rad = clamp01((1 - lum) * p.con) * maxR;
+            if (rad > 0.35) {
+              if (!isBW) ctx.fillStyle = `rgb(${r},${g},${b})`;
+              ctx.beginPath();
+              ctx.arc(x + half, y + half, rad, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+      }
+    },
+    {
+      id: 'edges',
+      name: 'Contours / Edges',
+      cat: 'graph',
+      params: [
+        { k: 'sens', l: 'Sensibilité', t: 'range', min: 0.5, max: 5, step: 0.1, def: 1.8 },
+        { k: 'mix',  l: 'Mix',         t: 'range', min: 0, max: 1, step: 0.01, def: 1 },
+        { k: 'inv',  l: 'Inverser',    t: 'switch', def: false }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const gray = new Float32Array(W * H);
+        for (let i = 0, k = 0; i < gray.length; i++, k += 4) {
+          gray[i] = d[k] * 0.2126 + d[k + 1] * 0.7152 + d[k + 2] * 0.0722;
+        }
+        const sens = p.sens, m = p.mix, im = 1 - m, inv = p.inv;
+        for (let y = 1; y < H - 1; y++) {
+          const row = y * W;
+          for (let x = 1; x < W - 1; x++) {
+            const i = row + x;
+            const gx = -gray[i - W - 1] + gray[i - W + 1]
+                     - 2 * gray[i - 1]  + 2 * gray[i + 1]
+                     - gray[i + W - 1]  + gray[i + W + 1];
+            const gy = -gray[i - W - 1] - 2 * gray[i - W] - gray[i - W + 1]
+                     + gray[i + W - 1]  + 2 * gray[i + W] + gray[i + W + 1];
+            let mag = clamp255(Math.hypot(gx, gy) * 0.35 * sens);
+            if (inv) mag = 255 - mag;
+            const k = i * 4;
+            d[k]     = d[k] * im + mag * m;
+            d[k + 1] = d[k + 1] * im + mag * m;
+            d[k + 2] = d[k + 2] * im + mag * m;
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'solar',
+      name: 'Solarisation',
+      cat: 'graph',
+      params: [
+        { k: 'thr', l: 'Seuil',     t: 'range', min: 0, max: 1, step: 0.01, def: 0.5 },
+        { k: 'mix', l: 'Intensité', t: 'range', min: 0, max: 1, step: 0.01, def: 1 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const thr = p.thr * 255;
+        const m = p.mix, im = 1 - m;
+        for (let i = 0; i < d.length; i += 4) {
+          for (let c = 0; c < 3; c++) {
+            const v = d[i + c];
+            const sv = v > thr ? 255 - v : v;
+            d[i + c] = v * im + sv * m;
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+
+    // --- DISTORSION & GLITCH (15 à 20) ---
+    {
+      id: 'chroma',
+      name: 'Aberration Chromatique',
+      cat: 'glitch',
+      params: [
+        { k: 'dx', l: 'Décalage X (px)', t: 'range', min: -40, max: 40, step: 1, def: 8 },
+        { k: 'dy', l: 'Décalage Y (px)', t: 'range', min: -40, max: 40, step: 1, def: 0 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const src = new Uint8ClampedArray(imgData.data);
+        const dst = imgData.data;
+        const dx = Math.round(p.dx), dy = Math.round(p.dy);
+        for (let y = 0; y < H; y++) {
+          const ry = Math.max(0, Math.min(H - 1, y + dy)) * W;
+          const by = Math.max(0, Math.min(H - 1, y - dy)) * W;
+          const row = y * W;
+          for (let x = 0; x < W; x++) {
+            const rx = Math.max(0, Math.min(W - 1, x + dx));
+            const bx = Math.max(0, Math.min(W - 1, x - dx));
+            const i = (row + x) * 4;
+            dst[i]     = src[(ry + rx) * 4];
+            dst[i + 2] = src[(by + bx) * 4 + 2];
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'glitch',
+      name: 'Glitch Bandes',
+      cat: 'glitch',
+      params: [
+        { k: 'amt',    l: 'Intensité',         t: 'range', min: 0, max: 1, step: 0.01, def: 0.5 },
+        { k: 'slices', l: 'Tranches',          t: 'range', min: 2, max: 40, step: 1, def: 12 },
+        { k: 'shift',  l: 'Décalage max (px)', t: 'range', min: 5, max: 120, step: 1, def: 40 },
+        { k: 'seed',   l: 'Graine',            t: 'range', min: 1, max: 100, step: 1, def: 42 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        if (p.amt <= 0) return;
+        tmp.width = W; tmp.height = H;
+        tctx.clearRect(0, 0, W, H);
+        tctx.drawImage(ctx.canvas, 0, 0);
+
+        const count = Math.round(p.slices);
+        const seed = Math.round(p.seed) * 131;
+        for (let s = 0; s < count; s++) {
+          if (hash32(seed + s * 17) > p.amt) continue;
+          const y = Math.floor(hash32(seed + s * 31) * H);
+          const h = Math.max(2, Math.floor((hash32(seed + s * 47) * 0.12 + 0.01) * H));
+          const sh = Math.round((hash32(seed + s * 61) * 2 - 1) * p.shift);
+          if (sh === 0) continue;
+
+          // Décalage avec rebouclage horizontal propre
+          ctx.drawImage(tmp, 0, y, W, h, sh, y, W, h);
+          if (sh > 0) {
+            ctx.drawImage(tmp, W - sh, y, sh, h, 0, y, sh, h);
+          } else {
+            ctx.drawImage(tmp, 0, y, -sh, h, W + sh, y, -sh, h);
+          }
+        }
+      }
+    },
+    {
+      id: 'pixel',
+      name: 'Pixelisation',
+      cat: 'glitch',
+      params: [
+        { k: 'size', l: 'Taille (px)', t: 'range', min: 2, max: 48, step: 1, def: 10 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        const sz = Math.max(2, Math.round(p.size));
+        const sw = Math.max(1, Math.round(W / sz));
+        const sh = Math.max(1, Math.round(H / sz));
+        tmp.width = sw; tmp.height = sh;
+        tctx.imageSmoothingEnabled = true;
+        tctx.clearRect(0, 0, sw, sh);
+        tctx.drawImage(ctx.canvas, 0, 0, sw, sh);
+
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, W, H);
+        ctx.drawImage(tmp, 0, 0, sw, sh, 0, 0, W, H);
+        ctx.imageSmoothingEnabled = true;
+      }
+    },
+    {
+      id: 'wave',
+      name: 'Vagues / Wave',
+      cat: 'glitch',
+      params: [
+        { k: 'amp',  l: 'Amplitude', t: 'range', min: 0, max: 40, step: 1, def: 12 },
+        { k: 'freq', l: 'Fréquence', t: 'range', min: 1, max: 30, step: 0.5, def: 8 },
+        {
+          k: 'axis', l: 'Axe', t: 'select', def: 'x',
+          opts: [
+            ['x',    'Horizontal'],
+            ['y',    'Vertical'],
+            ['both', 'Les deux']
+          ]
+        }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        if (p.amp === 0) return;
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const src = new Uint8ClampedArray(imgData.data);
+        const dst = imgData.data;
+        const amp = p.amp;
+        const fx = (p.freq * Math.PI * 2) / H;
+        const fy = (p.freq * Math.PI * 2) / W;
+        const doX = p.axis === 'x' || p.axis === 'both';
+        const doY = p.axis === 'y' || p.axis === 'both';
+
+        for (let y = 0; y < H; y++) {
+          const ox = doX ? Math.sin(y * fx) * amp : 0;
+          for (let x = 0; x < W; x++) {
+            const oy = doY ? Math.sin(x * fy) * amp : 0;
+            const sx = Math.max(0, Math.min(W - 1, Math.round(x + ox)));
+            const sy = Math.max(0, Math.min(H - 1, Math.round(y + oy)));
+            const si = (sy * W + sx) * 4;
+            const di = (y * W + x) * 4;
+            dst[di]     = src[si];
+            dst[di + 1] = src[si + 1];
+            dst[di + 2] = src[si + 2];
+            dst[di + 3] = src[si + 3];
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'swirl',
+      name: 'Tourbillon / Swirl',
+      cat: 'glitch',
+      params: [
+        { k: 'angle', l: 'Angle', t: 'range', min: -10, max: 10, step: 0.1, def: 3 },
+        { k: 'rad',   l: 'Rayon', t: 'range', min: 0.1, max: 1, step: 0.01, def: 0.7 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        if (p.angle === 0) return;
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const src = new Uint8ClampedArray(imgData.data);
+        const dst = imgData.data;
+        const cx = W * 0.5, cy = H * 0.5;
+        const maxR = Math.min(cx, cy) * p.rad;
+        const maxR2 = maxR * maxR;
+        const ang = p.angle;
+
+        for (let y = 0; y < H; y++) {
+          const dy = y - cy;
+          for (let x = 0; x < W; x++) {
+            const dx = x - cx;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < maxR2 && d2 > 0) {
+              const dist = Math.sqrt(d2);
+              const factor = 1 - dist / maxR;
+              const theta = factor * factor * ang;
+              const c = Math.cos(theta), s = Math.sin(theta);
+              const sx = Math.max(0, Math.min(W - 1, Math.round(cx + dx * c - dy * s)));
+              const sy = Math.max(0, Math.min(H - 1, Math.round(cy + dx * s + dy * c)));
+              const si = (sy * W + sx) * 4;
+              const di = (y * W + x) * 4;
+              dst[di]     = src[si];
+              dst[di + 1] = src[si + 1];
+              dst[di + 2] = src[si + 2];
+            }
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'scanlines',
+      name: 'Scanlines CRT',
+      cat: 'glitch',
+      params: [
+        { k: 'gap', l: 'Espacement (px)', t: 'range', min: 2, max: 16, step: 1, def: 4 },
+        { k: 'op',  l: 'Opacité',         t: 'range', min: 0, max: 1, step: 0.01, def: 0.45 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        if (p.op <= 0) return;
+        const gap = Math.max(2, Math.round(p.gap));
+        const thick = Math.max(1, Math.floor(gap * 0.45));
+        ctx.save();
+        ctx.fillStyle = `rgba(0,0,0,${p.op})`;
+        for (let y = 0; y < H; y += gap) {
+          ctx.fillRect(0, y, W, thick);
+        }
+        ctx.restore();
+      }
+    },
+
+    // --- OPTIQUE & TEXTURE (21 à 24) ---
+    {
+      id: 'blur',
+      name: 'Flou / Blur',
+      cat: 'optique',
+      params: [
+        { k: 'rad', l: 'Rayon (px)', t: 'range', min: 0, max: 24, step: 0.5, def: 4 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        if (p.rad <= 0) return;
+        tmp.width = W; tmp.height = H;
+        tctx.filter = 'none';
+        tctx.clearRect(0, 0, W, H);
+        tctx.drawImage(ctx.canvas, 0, 0);
+
+        ctx.save();
+        ctx.filter = `blur(${p.rad}px)`;
+        ctx.drawImage(tmp, 0, 0);
+        ctx.restore();
+      }
+    },
+    {
+      id: 'sharpen',
+      name: 'Netteté / Sharpen',
+      cat: 'optique',
+      params: [
+        { k: 'amt', l: 'Intensité', t: 'range', min: 0, max: 4, step: 0.05, def: 1.2 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        if (p.amt <= 0) return;
+        // Masque flou (Unsharp Mask) rapide via canvas auxiliaire
+        tmp.width = W; tmp.height = H;
+        tctx.save();
+        tctx.filter = 'blur(2px)';
+        tctx.clearRect(0, 0, W, H);
+        tctx.drawImage(ctx.canvas, 0, 0);
+        tctx.restore();
+
+        const orig = ctx.getImageData(0, 0, W, H);
+        const blur = tctx.getImageData(0, 0, W, H).data;
+        const d = orig.data;
+        const a = p.amt;
+        for (let i = 0; i < d.length; i += 4) {
+          d[i]     = clamp255(d[i] + a * (d[i] - blur[i]));
+          d[i + 1] = clamp255(d[i + 1] + a * (d[i + 1] - blur[i + 1]));
+          d[i + 2] = clamp255(d[i + 2] + a * (d[i + 2] - blur[i + 2]));
+        }
+        ctx.putImageData(orig, 0, 0);
+      }
+    },
+    {
+      id: 'grain',
+      name: 'Grain / Bruit',
+      cat: 'optique',
+      params: [
+        { k: 'amt',  l: 'Intensité',  t: 'range', min: 0, max: 1, step: 0.01, def: 0.25 },
+        { k: 'mono', l: 'Monochrome', t: 'switch', def: true }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        if (p.amt <= 0) return;
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const str = p.amt * 140;
+        const mono = p.mono;
+        for (let i = 0, px = 0; i < d.length; i += 4, px++) {
+          if (mono) {
+            const n = (hash32(px + 7) - 0.5) * str;
+            d[i]     = clamp255(d[i] + n);
+            d[i + 1] = clamp255(d[i + 1] + n);
+            d[i + 2] = clamp255(d[i + 2] + n);
+          } else {
+            d[i]     = clamp255(d[i] + (hash32(px * 3 + 1) - 0.5) * str);
+            d[i + 1] = clamp255(d[i + 1] + (hash32(px * 3 + 2) - 0.5) * str);
+            d[i + 2] = clamp255(d[i + 2] + (hash32(px * 3 + 3) - 0.5) * str);
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    },
+    {
+      id: 'vignette',
+      name: 'Vignette',
+      cat: 'optique',
+      params: [
+        { k: 'amt', l: 'Intensité', t: 'range', min: -1, max: 1, step: 0.01, def: 0.55 },
+        { k: 'rad', l: 'Rayon',     t: 'range', min: 0.2, max: 1.5, step: 0.01, def: 0.85 }
+      ],
+      apply(ctx, tmp, tctx, W, H, p) {
+        if (p.amt === 0) return;
+        const imgData = ctx.getImageData(0, 0, W, H);
+        const d = imgData.data;
+        const cx = W * 0.5, cy = H * 0.5;
+        const maxR = Math.hypot(cx, cy) * p.rad;
+        const invMax = 1 / Math.max(1, maxR);
+        const amt = p.amt;
+
+        for (let y = 0, i = 0; y < H; y++) {
+          const dy = y - cy;
+          const dy2 = dy * dy;
+          for (let x = 0; x < W; x++, i += 4) {
+            const dx = x - cx;
+            const r = Math.sqrt(dx * dx + dy2) * invMax;
+            const f = r * r * r * amt * 255;
+            d[i]     = clamp255(d[i] - f);
+            d[i + 1] = clamp255(d[i + 1] - f);
+            d[i + 2] = clamp255(d[i + 2] - f);
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+    }
+  ];
+
+  const FILTER_MAP = Object.fromEntries(FILTERS.map(f => [f.id, f]));
+
+  // =========================================================================
+  // 3. PRESETS DE COMBINAISONS (6 piles pré-réglées)
+  // =========================================================================
+  const PRESETS = [
+    {
+      name: 'Acid Riso',
+      stack: [
+        { id: 'duotone', params: { c0: '#000000', c1: '#D4FF00', mix: 1 } },
+        { id: 'dither',  params: { method: 'bayer', lev: 3, mode: 'color' } },
+        { id: 'grain',   params: { amt: 0.25, mono: true } }
+      ]
+    },
+    {
+      name: 'VHS Glitch',
+      stack: [
+        { id: 'chroma',    params: { dx: 10, dy: 2 } },
+        { id: 'scanlines', params: { gap: 4, op: 0.45 } },
+        { id: 'glitch',    params: { amt: 0.55, slices: 14, shift: 45, seed: 24 } },
+        { id: 'grain',     params: { amt: 0.3, mono: false } }
+      ]
+    },
+    {
+      name: 'Affiche Pop',
+      stack: [
+        { id: 'expcon',   params: { exp: 0.1, bri: 0, con: 1.45, gam: 1 } },
+        { id: 'poster',   params: { lev: 4 } },
+        { id: 'halftone', params: { size: 9, con: 1.25, mode: 'color', bg: '#FFFFFF' } }
+      ]
+    },
+    {
+      name: 'Cyber Thermique',
+      stack: [
+        { id: 'thermal',  params: { pal: 'cyber', mix: 1 } },
+        { id: 'edges',    params: { sens: 2.2, mix: 0.45, inv: false } },
+        { id: 'vignette', params: { amt: 0.65, rad: 0.85 } }
+      ]
+    },
+    {
+      name: 'Pixel Rétro',
+      stack: [
+        { id: 'pixel',     params: { size: 10 } },
+        { id: 'poster',    params: { lev: 5 } },
+        { id: 'scanlines', params: { gap: 4, op: 0.35 } }
+      ]
+    },
+    {
+      name: 'Film Noir',
+      stack: [
+        { id: 'bw',       params: { mode: 'r', mix: 1 } },
+        { id: 'expcon',   params: { exp: -0.2, bri: 0, con: 1.75, gam: 1 } },
+        { id: 'grain',    params: { amt: 0.35, mono: true } },
+        { id: 'vignette', params: { amt: 0.7, rad: 0.8 } }
+      ]
+    }
+  ];
+
+  // =========================================================================
+  // 4. ÉTAT DE L'APPLICATION & CANVASES DE RENDU
+  // =========================================================================
+  let img = null;
+  let W = 0, H = 0;
+  let raf = 0;
+  let showOrig = false;
+  let activeCat = 'all';
+  let nextUid = 1;
+  let stack = []; // [{ uid, defId, enabled, collapsed, params: {} }]
+
+  const outCanvas = $('out');
+  const outCtx = outCanvas.getContext('2d', { willReadFrequently: true });
+
+  // Canvas source (redimensionné max 1400px) et canvas de travail auxiliaire
+  const srcCanvas = document.createElement('canvas');
+  const srcCtx = srcCanvas.getContext('2d', { willReadFrequently: true });
+
+  const workCanvas = document.createElement('canvas');
+  const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
+
+  const tmpCanvas = document.createElement('canvas');
+  const tmpCtx = tmpCanvas.getContext('2d', { willReadFrequently: true });
+
+  // =========================================================================
+  // 5. GESTION DE LA PILE DE FILTRES
+  // =========================================================================
+  function createFilterInstance(defId, customParams = {}) {
+    const def = FILTER_MAP[defId];
+    const params = {};
+    def.params.forEach(p => {
+      params[p.k] = customParams[p.k] !== undefined ? customParams[p.k] : p.def;
+    });
+    return {
+      uid: nextUid++,
+      defId,
+      enabled: true,
+      collapsed: false,
+      params
+    };
+  }
+
+  function addFilter(defId, customParams = {}) {
+    stack.push(createFilterInstance(defId, customParams));
+    renderStackUI();
+    updateButtonsAndInfo();
+    schedule();
+  }
+
+  function applyPreset(preset) {
+    stack = preset.stack.map(item => createFilterInstance(item.id, item.params));
+    renderStackUI();
+    updateButtonsAndInfo();
+    schedule();
+  }
+
+  function clearStack() {
+    stack = [];
+    renderStackUI();
+    updateButtonsAndInfo();
+    schedule();
+  }
+
+  function moveFilter(index, dir) {
+    const target = index + dir;
+    if (target < 0 || target >= stack.length) return;
+    const [item] = stack.splice(index, 1);
+    stack.splice(target, 0, item);
+    renderStackUI();
+    schedule();
+  }
+
+  function resetFilter(index) {
+    const inst = stack[index];
+    const def = FILTER_MAP[inst.defId];
+    def.params.forEach(p => { inst.params[p.k] = p.def; });
+    renderStackUI();
+    schedule();
+  }
+
+  function removeFilter(index) {
+    stack.splice(index, 1);
+    renderStackUI();
+    updateButtonsAndInfo();
+    schedule();
+  }
+
+  // =========================================================================
+  // 6. INTERFACE : PRESETS, CATALOGUE & CARTES DE LA PILE
+  // =========================================================================
+  function buildPresetsUI() {
+    const el = $('presets');
+    PRESETS.forEach(p => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = p.name;
+      b.onclick = () => applyPreset(p);
+      el.appendChild(b);
+    });
+  }
+
+  function buildCategoriesUI() {
+    const el = $('cats');
+    el.innerHTML = '';
+    CATEGORIES.forEach(c => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = c.label;
+      if (c.id === activeCat) b.classList.add('active');
+      b.onclick = () => {
+        activeCat = c.id;
+        buildCategoriesUI();
+        buildCatalogGrid();
+      };
+      el.appendChild(b);
+    });
+  }
+
+  function buildCatalogGrid() {
+    const grid = $('catGrid');
+    grid.innerHTML = '';
+    const list = activeCat === 'all' ? FILTERS : FILTERS.filter(f => f.cat === activeCat);
+    list.forEach(f => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = f.name;
+      b.title = `Ajouter « ${f.name} » à la pile`;
+      b.onclick = () => addFilter(f.id);
+      grid.appendChild(b);
+    });
+  }
+
+  function renderStackUI() {
+    const listEl = $('stackList');
+    listEl.innerHTML = '';
+
+    const activeCount = stack.filter(s => s.enabled).length;
+    $('stackTitle').textContent = `Pile active (${activeCount}/${stack.length})`;
+
+    if (stack.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-stack';
+      empty.textContent = 'Aucun filtre dans la pile. Ajoutez un filtre ci-dessus ou choisissez un preset.';
+      listEl.appendChild(empty);
+      return;
+    }
+
+    stack.forEach((inst, idx) => {
+      const def = FILTER_MAP[inst.defId];
+      const card = document.createElement('div');
+      card.className = 'fcard' + (inst.enabled ? '' : ' off') + (inst.collapsed ? ' collapsed' : '');
+
+      // En-tête de la carte
+      const hd = document.createElement('div');
+      hd.className = 'fcard-hd';
+
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.className = 'fcard-chk';
+      chk.checked = inst.enabled;
+      chk.title = inst.enabled ? 'Masquer ce filtre' : 'Activer ce filtre';
+      chk.onchange = () => {
+        inst.enabled = chk.checked;
+        card.classList.toggle('off', !inst.enabled);
+        const cnt = stack.filter(s => s.enabled).length;
+        $('stackTitle').textContent = `Pile active (${cnt}/${stack.length})`;
+        updateButtonsAndInfo();
+        schedule();
+      };
+
+      const nameBtn = document.createElement('button');
+      nameBtn.type = 'button';
+      nameBtn.className = 'fcard-name';
+      nameBtn.textContent = `${idx + 1}. ${def.name}`;
+      nameBtn.title = 'Cliquer pour plier / déplier les paramètres';
+      nameBtn.onclick = () => {
+        inst.collapsed = !inst.collapsed;
+        card.classList.toggle('collapsed', inst.collapsed);
+      };
+
+      const acts = document.createElement('div');
+      acts.className = 'fcard-acts';
+
+      const bUp = document.createElement('button');
+      bUp.type = 'button';
+      bUp.textContent = '↑';
+      bUp.title = 'Monter';
+      bUp.disabled = idx === 0;
+      bUp.onclick = () => moveFilter(idx, -1);
+
+      const bDn = document.createElement('button');
+      bDn.type = 'button';
+      bDn.textContent = '↓';
+      bDn.title = 'Descendre';
+      bDn.disabled = idx === stack.length - 1;
+      bDn.onclick = () => moveFilter(idx, 1);
+
+      const bRst = document.createElement('button');
+      bRst.type = 'button';
+      bRst.textContent = '↺';
+      bRst.title = 'Réinitialiser ce filtre';
+      bRst.onclick = () => resetFilter(idx);
+
+      const bDel = document.createElement('button');
+      bDel.type = 'button';
+      bDel.textContent = '×';
+      bDel.title = 'Supprimer';
+      bDel.onclick = () => removeFilter(idx);
+
+      acts.append(bUp, bDn, bRst, bDel);
+      hd.append(chk, nameBtn, acts);
+
+      // Corps dépliable avec les paramètres propres au filtre
+      const bd = document.createElement('div');
+      bd.className = 'fcard-bd';
+
+      def.params.forEach(p => {
+        const ctrlId = `f_${inst.uid}_${p.k}`;
+
+        if (p.t === 'range') {
+          const row = document.createElement('div');
+          row.className = 'row';
+
+          const lbl = document.createElement('label');
+          lbl.htmlFor = ctrlId;
+          lbl.textContent = p.l;
+          lbl.title = 'Double-clic pour réinitialiser';
+
+          const out = document.createElement('output');
+          out.textContent = fmtNum(inst.params[p.k]);
+
+          const inp = document.createElement('input');
+          inp.id = ctrlId;
+          inp.type = 'range';
+          inp.min = p.min;
+          inp.max = p.max;
+          inp.step = p.step;
+          inp.value = inst.params[p.k];
+
+          inp.oninput = () => {
+            const v = +inp.value;
+            inst.params[p.k] = v;
+            out.textContent = fmtNum(v);
+            schedule();
+          };
+          lbl.ondblclick = () => {
+            inst.params[p.k] = p.def;
+            inp.value = p.def;
+            out.textContent = fmtNum(p.def);
+            schedule();
+          };
+
+          row.append(lbl, out, inp);
+          bd.appendChild(row);
+        } else if (p.t === 'color') {
+          const col = document.createElement('div');
+          col.className = 'col';
+
+          const lbl = document.createElement('label');
+          lbl.htmlFor = ctrlId;
+          lbl.textContent = p.l;
+
+          const pic = document.createElement('input');
+          pic.type = 'color';
+          pic.value = inst.params[p.k];
+
+          const txt = document.createElement('input');
+          txt.id = ctrlId;
+          txt.type = 'text';
+          txt.value = inst.params[p.k].toUpperCase();
+          txt.maxLength = 7;
+          txt.spellcheck = false;
+
+          pic.oninput = () => {
+            const v = pic.value.toUpperCase();
+            inst.params[p.k] = v;
+            txt.value = v;
+            schedule();
+          };
+          txt.oninput = () => {
+            let s = txt.value.trim();
+            if (s && s[0] !== '#') s = '#' + s;
+            if (s.length === 4 && /^#[0-9a-f]{3}$/i.test(s)) {
+              s = '#' + [...s.slice(1)].map(ch => ch + ch).join('');
+            }
+            if (hexOk(s)) {
+              inst.params[p.k] = s.toUpperCase();
+              pic.value = s;
+              schedule();
+            }
+          };
+
+          col.append(lbl, pic, txt);
+          bd.appendChild(col);
+        } else if (p.t === 'select') {
+          const row = document.createElement('div');
+          row.className = 'row';
+
+          const lbl = document.createElement('label');
+          lbl.htmlFor = ctrlId;
+          lbl.textContent = p.l;
+
+          const sel = document.createElement('select');
+          sel.id = ctrlId;
+          p.opts.forEach(([val, text]) => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = text;
+            if (inst.params[p.k] === val) opt.selected = true;
+            sel.appendChild(opt);
+          });
+          sel.onchange = () => {
+            inst.params[p.k] = sel.value;
+            schedule();
+          };
+
+          row.append(lbl, sel);
+          bd.appendChild(row);
+        } else if (p.t === 'switch') {
+          const sw = document.createElement('label');
+          sw.className = 'sw';
+
+          const inp = document.createElement('input');
+          inp.type = 'checkbox';
+          inp.checked = Boolean(inst.params[p.k]);
+          inp.onchange = () => {
+            inst.params[p.k] = inp.checked;
+            schedule();
+          };
+
+          const track = document.createElement('span');
+          track.className = 't';
+
+          const txt = document.createTextNode(p.l);
+          sw.append(inp, track, txt);
+          bd.appendChild(sw);
+        }
+      });
+
+      card.append(hd, bd);
+      listEl.appendChild(card);
+    });
+  }
+
+  function updateButtonsAndInfo() {
+    const activeCount = stack.filter(s => s.enabled).length;
+    $('cmp').disabled = !img;
+    $('download').disabled = !img;
+    $('clearStack').disabled = stack.length === 0;
+
+    const dimTxt = img ? `${W} × ${H} px` : 'Aucune image chargée';
+    const fltTxt = `${activeCount} filtre${activeCount > 1 ? 's' : ''} actif${activeCount > 1 ? 's' : ''}`;
+    $('info').textContent = `${dimTxt} • ${fltTxt}`;
+  }
+
+  // =========================================================================
+  // 7. CHARGEMENT D'IMAGE, PIPELINE DE RENDU & EXPORT PNG
+  // =========================================================================
+  function loadFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => {
+      // Redimensionnement à 1400px max sur le grand côté pour fluidité temps réel
+      const maxDim = 1400;
+      const scale = Math.min(1, maxDim / Math.max(im.width, im.height));
+      W = Math.max(1, Math.round(im.width * scale));
+      H = Math.max(1, Math.round(im.height * scale));
+
+      outCanvas.width = srcCanvas.width = workCanvas.width = W;
+      outCanvas.height = srcCanvas.height = workCanvas.height = H;
+
+      srcCtx.clearRect(0, 0, W, H);
+      srcCtx.drawImage(im, 0, 0, W, H);
+
+      img = im;
+      URL.revokeObjectURL(url);
+      $('view').classList.add('has');
+      updateButtonsAndInfo();
+      schedule();
+    };
+    im.src = url;
+  }
+
+  function schedule() {
+    if (!raf) {
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        render();
+      });
+    }
+  }
+
+  function render() {
+    if (!img) return;
+
+    // Si l'utilisateur maintient "voir l'original", afficher directement srcCanvas
+    if (showOrig) {
+      outCtx.clearRect(0, 0, W, H);
+      outCtx.drawImage(srcCanvas, 0, 0);
+      return;
+    }
+
+    // Copie de la source sur le canvas de travail
+    workCtx.filter = 'none';
+    workCtx.clearRect(0, 0, W, H);
+    workCtx.drawImage(srcCanvas, 0, 0);
+
+    // Application séquentielle de chaque filtre actif du haut vers le bas
+    for (let i = 0; i < stack.length; i++) {
+      const inst = stack[i];
+      if (!inst.enabled) continue;
+      const def = FILTER_MAP[inst.defId];
+      if (def) {
+        try {
+          def.apply(workCtx, tmpCanvas, tmpCtx, W, H, inst.params);
+        } catch (err) {
+          console.error('Erreur filtre', inst.defId, err);
+        }
+      }
+    }
+
+    // Copie finale vers le canvas d'affichage
+    outCtx.clearRect(0, 0, W, H);
+    outCtx.drawImage(workCanvas, 0, 0);
+  }
+
+  function downloadPNG() {
+    if (!img) return;
+    outCanvas.toBlob(blob => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'studio-filtres.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, 'image/png');
+  }
+
+  // =========================================================================
+  // 8. ÉVÉNEMENTS UTILISATEUR
+  // =========================================================================
+  $('pick').onclick = () => $('file').click();
+  $('drop').onclick = () => $('file').click();
+  $('drop').onkeydown = e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      $('file').click();
+    }
+  };
+  $('file').onchange = e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+    e.target.value = '';
+  };
+
+  // Drag & Drop sur toute la zone .view
+  const dz = $('view');
+  ['dragenter', 'dragover'].forEach(ev =>
+    dz.addEventListener(ev, e => {
+      e.preventDefault();
+      dz.classList.add('over');
+    })
+  );
+  ['dragleave', 'drop'].forEach(ev =>
+    dz.addEventListener(ev, e => {
+      e.preventDefault();
+      dz.classList.remove('over');
+    })
+  );
+  dz.addEventListener('drop', e => {
+    if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+
+  // Collage Ctrl+V
+  window.addEventListener('paste', e => {
+    const f = e.clipboardData && [...e.clipboardData.files].find(x => x.type.startsWith('image/'));
+    if (f) loadFile(f);
+  });
+
+  // Maintenir : voir l'original
+  const cmp = $('cmp');
+  const onDown = () => { if (!img) return; showOrig = true; schedule(); };
+  const onUp = () => { if (!showOrig) return; showOrig = false; schedule(); };
+  cmp.addEventListener('pointerdown', onDown);
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => cmp.addEventListener(ev, onUp));
+
+  $('clearStack').onclick = clearStack;
+  $('download').onclick = downloadPNG;
+
+  // Initialisation de l'interface
+  buildPresetsUI();
+  buildCategoriesUI();
+  buildCatalogGrid();
+  renderStackUI();
+  updateButtonsAndInfo();
+})();
+</script>
+</body>
+</html>

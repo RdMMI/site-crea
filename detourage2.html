@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Détourage</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFFFFF;
+    --ink:#000000;
+    --acc:#D4FF00;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font:400 14px/1.5 "Bricolage Grotesque",system-ui,sans-serif;
+    min-height:100vh;
+  }
+  main{max-width:1200px;margin:0 auto;padding:40px 20px 60px}
+  h1{
+    font-family:"Bricolage Grotesque",system-ui,sans-serif;
+    font-size:clamp(2rem,6vw,3.4rem);
+    line-height:1.05;
+    margin:0 0 8px;
+    letter-spacing:-.02em;
+    font-weight:800;
+  }
+  .lead{color:var(--ink);opacity:.65;margin:0 0 28px;max-width:56ch}
+  #drop{
+    border:2px dashed var(--ink);
+    background:var(--bg);
+    border-radius:0;
+    padding:44px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:background .12s;
+  }
+  #drop:hover,#drop.over{background:var(--acc)}
+  #drop strong{display:block;font-size:1.25rem;font-weight:800;margin-bottom:4px}
+  #drop span{color:var(--ink);opacity:.7;font-size:.95rem}
+  .stage{display:none;margin-top:24px}
+  .stage.on{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 260px;
+    gap:16px;
+    align-items:start;
+  }
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:900px){.stage.on{grid-template-columns:1fr}}
+  @media (max-width:700px){.panes{grid-template-columns:1fr}}
+  figure{
+    margin:0;
+    background:var(--bg);
+    border:2px solid var(--ink);
+    border-radius:0;
+    padding:10px;
+  }
+  figcaption{font-size:.95rem;font-weight:800;color:var(--ink);margin-bottom:8px}
+  .frame{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:240px;
+    border-radius:0;
+    overflow:hidden;
+    position:relative;
+  }
+  .frame img{max-width:100%;max-height:480px;display:block}
+  .checker{background:conic-gradient(#e5e5e5 25%,#ffffff 0 50%,#e5e5e5 0 75%,#ffffff 0) 0 0/20px 20px}
+  #status{
+    position:absolute;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:10px;
+    background:rgba(255,255,255,.92);
+    color:var(--ink);
+    font-size:.95rem;
+    font-weight:600;
+    text-align:center;
+    padding:12px;
+  }
+  #status.on{display:flex}
+  .bar{
+    width:180px;
+    height:12px;
+    border:2px solid var(--ink);
+    background:var(--bg);
+    border-radius:0;
+    overflow:hidden;
+  }
+  .bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+  .controls{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:14px;
+    margin-top:0;
+    background:var(--bg);
+    border:2px solid var(--ink);
+    border-radius:0;
+    padding:14px;
+  }
+  label{display:flex;flex-direction:column;gap:4px;font-size:.9rem;font-weight:600;color:var(--ink)}
+  label[hidden]{display:none}
+  select,input[type=color]{
+    font:inherit;
+    color:var(--ink);
+    background:var(--bg);
+    border:2px solid var(--ink);
+    border-radius:0;
+    padding:6px 8px;
+    height:38px;
+    width:100%;
+    cursor:pointer;
+  }
+  input[type=color]{padding:0}
+  button{
+    font:inherit;
+    font-weight:600;
+    border-radius:0;
+    padding:0 18px;
+    height:38px;
+    width:100%;
+    cursor:pointer;
+    border:2px solid var(--ink);
+    background:var(--acc);
+    color:var(--ink);
+  }
+  button:hover,button.primary{background:var(--ink);color:var(--acc)}
+  button.primary{font-weight:800}
+  button:disabled{opacity:.35;cursor:not-allowed}
+  button:disabled:hover{background:var(--acc);color:var(--ink)}
+  button.primary:disabled:hover{background:var(--ink);color:var(--acc)}
+  :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+  .spacer{display:none}
+  #err{
+    display:none;
+    grid-column:1/-1;
+    margin-top:0;
+    padding:10px 14px;
+    border:2px solid var(--ink);
+    background:var(--ink);
+    color:var(--acc);
+    font-weight:600;
+  }
+  small{display:block;margin-top:22px;color:var(--ink);opacity:.7;font-size:12px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Détourage</h1>
+  <p class="lead">Déposez une photo : le sujet principal est découpé automatiquement, à la résolution d'origine. Tout se passe dans votre navigateur, l'image n'est envoyée nulle part.</p>
+
+  <div id="drop" tabindex="0" role="button" aria-label="Choisir une image">
+    <strong>Déposez une image ici ou cliquez pour en choisir une</strong>
+    <span>JPEG, PNG ou WebP</span>
+    <input id="file" type="file" accept="image/*" hidden>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="panes">
+      <figure><figcaption>Original</figcaption><div class="frame"><img id="orig" alt="Image d'origine"></div></figure>
+      <figure><figcaption>Détourée</figcaption>
+        <div class="frame checker"><img id="res" alt="Image détourée" hidden>
+          <div id="status"><span id="stxt">Chargement du modèle…</span><div class="bar"><i id="bar"></i></div></div>
+        </div>
+      </figure>
+    </div>
+
+    <div class="controls">
+      <label>Format
+        <select id="fmt"><option value="png">PNG (transparent)</option><option value="jpeg">JPEG</option></select>
+      </label>
+      <label id="bgwrap" hidden>Fond du JPEG
+        <input type="color" id="bg" value="#ffffff">
+      </label>
+      <div class="spacer"></div>
+      <button id="again">Autre image</button>
+      <button id="dl" class="primary" disabled>Télécharger</button>
+    </div>
+    <div id="err" role="alert"></div>
+  </div>
+  <small>Le premier détourage télécharge le modèle d'IA (environ 40 Mo), ensuite il est mis en cache. Connexion internet requise.</small>
+</main>
+
+<script type="module">
+import { removeBackground } from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm";
+
+const $ = id => document.getElementById(id);
+const drop = $("drop"), file = $("file"), stage = $("stage");
+let cutoutBlob = null, baseName = "image", imgW = 0, imgH = 0;
+
+drop.onclick = () => file.click();
+drop.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); file.click(); } };
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); if (e.dataTransfer.files[0]) handle(e.dataTransfer.files[0]); };
+file.onchange = () => file.files[0] && handle(file.files[0]);
+$("again").onclick = () => { stage.classList.remove("on"); drop.style.display = ""; file.value = ""; };
+$("fmt").onchange = () => { $("bgwrap").hidden = $("fmt").value !== "jpeg"; };
+
+async function handle(f) {
+  if (!f.type.startsWith("image/")) return showErr("Ce fichier n'est pas une image.");
+  $("err").style.display = "none";
+  baseName = f.name.replace(/\.[^.]+$/, "") || "image";
+  cutoutBlob = null; $("dl").disabled = true; $("res").hidden = true;
+  drop.style.display = "none"; stage.classList.add("on");
+  $("orig").src = URL.createObjectURL(f);
+  setStatus("Chargement du modèle…", 0);
+
+  try {
+    const blob = await removeBackground(f, {
+      output: { format: "image/png", quality: 1 },
+      progress: (key, cur, total) => {
+        const p = total ? Math.round(cur / total * 100) : 0;
+        setStatus(key.startsWith("fetch") ? "Téléchargement du modèle…" : "Détourage en cours…", p);
+      }
+    });
+    cutoutBlob = blob;
+    const url = URL.createObjectURL(blob);
+    $("res").onload = () => { imgW = $("res").naturalWidth; imgH = $("res").naturalHeight; };
+    $("res").src = url; $("res").hidden = false;
+    $("status").classList.remove("on");
+    $("dl").disabled = false;
+  } catch (e) {
+    console.error(e);
+    $("status").classList.remove("on");
+    showErr("Le détourage a échoué. Vérifiez votre connexion et ouvrez la page via un serveur local (ex. « npx serve » ou l'extension Live Server).");
+  }
+}
+
+function setStatus(t, p) { $("status").classList.add("on"); $("stxt").textContent = t; $("bar").style.width = p + "%"; }
+function showErr(m) { const e = $("err"); e.textContent = m; e.style.display = "block"; stage.classList.add("on"); }
+
+$("dl").onclick = async () => {
+  if (!cutoutBlob) return;
+  const fmt = $("fmt").value;
+  let out = cutoutBlob;
+  if (fmt === "jpeg") {
+    const bmp = await createImageBitmap(cutoutBlob);
+    const c = document.createElement("canvas");
+    c.width = bmp.width; c.height = bmp.height;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = $("bg").value; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(bmp, 0, 0);
+    out = await new Promise(r => c.toBlob(r, "image/jpeg", 1));
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(out);
+  a.download = `${baseName}-detoure.${fmt === "jpeg" ? "jpg" : "png"}`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
+</script>
+</body>
+</html>
