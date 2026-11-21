@@ -19,6 +19,30 @@ function isValidUrl(raw) {
   }
 }
 
+// Prépare les arguments communs pour yt-dlp (moteur JS Node + cookies Render/local)
+function getBaseYtDlpArgs() {
+  const args = ['--js-runtimes', 'node'];
+
+  const renderSecret = '/etc/secrets/cookies.txt';
+  const localCookies = path.join(__dirname, 'cookies.txt');
+  const source = fs.existsSync(renderSecret)
+    ? renderSecret
+    : (fs.existsSync(localCookies) ? localCookies : null);
+
+  if (source) {
+    // Copie dans /tmp car /etc/secrets est en lecture seule sur Render
+    const tmpCookies = path.join(os.tmpdir(), 'cookies.txt');
+    try {
+      fs.copyFileSync(source, tmpCookies);
+      args.push('--cookies', tmpCookies);
+    } catch {
+      args.push('--cookies', source);
+    }
+  }
+
+  return args;
+}
+
 // Vérification que le serveur tourne
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
@@ -28,6 +52,7 @@ app.get('/api/info', (req, res) => {
   if (!isValidUrl(url)) return res.status(400).json({ error: 'URL invalide' });
 
   const child = spawn('yt-dlp', [
+    ...getBaseYtDlpArgs(),
     '--dump-single-json',
     '--no-warnings',
     '--no-playlist',
@@ -94,7 +119,7 @@ app.get('/api/download', (req, res) => {
     ];
   }
 
-  const child = spawn('yt-dlp', args);
+  const child = spawn('yt-dlp', [...getBaseYtDlpArgs(), ...args]);
   let stderr = '';
   child.stderr.on('data', (d) => (stderr += d));
 
