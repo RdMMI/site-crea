@@ -935,10 +935,10 @@ small{color:var(--ink);opacity:.7;font-size:12px;margin-top:8px;display:block}
   <details id="backendDetails">
     <summary>Serveur Backend (Liens)</summary>
     <div class="api-col">
-      <input type="text" id="apiInput" placeholder="http://localhost:3000" spellcheck="false" aria-label="URL du serveur backend">
+      <input type="text" id="apiInput" placeholder="https://site-crea.onrender.com" spellcheck="false" aria-label="URL du serveur backend">
       <button type="button" id="testApiBtn">Tester</button>
     </div>
-    <small>Partagé avec Studio Vidéo (<code>crea_api_url</code>). Utilisez <code>http://localhost:3000</code> en local (Docker) ou votre URL Render en ligne.</small>
+    <small>Partagé avec Studio Vidéo (<code>crea_api_url</code>). Utilisez <code>https://site-crea.onrender.com</code> en local (Docker) ou votre URL Render en ligne.</small>
   </details>
 
   <!-- 5. Historique récent -->
@@ -960,7 +960,7 @@ small{color:var(--ink);opacity:.7;font-size:12px;margin-top:8px;display:block}
   // =========================================================================
   // 1. CONSTANTES & CLÉS LOCALSTORAGE
   // =========================================================================
-  const DEFAULT_API = 'http://localhost:3000';
+  const DEFAULT_API = 'https://site-crea.onrender.com';
   const STORAGE_API_KEY = 'crea_api_url';
   const STORAGE_HIST_KEY = 'crea_audio_history';
   const MAX_HISTORY = 6;

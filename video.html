@@ -673,7 +673,7 @@ small{color:var(--ink);opacity:.7;font-size:12px;margin-top:8px;display:block}
     <!-- Barre d'actions en bas -->
     <div class="bar">
       <!-- <a href="index.html" class="btn sec">← Hub</a> -->
-       <p> </p>
+       <p></p>
       <div class="bar-group">
         <button type="button" id="clearBtn" class="sec">Effacer</button>
         <button type="button" id="downloadBtn" class="pri" disabled>Télécharger la vidéo (MP4)</button>
@@ -713,7 +713,7 @@ small{color:var(--ink);opacity:.7;font-size:12px;margin-top:8px;display:block}
       <span class="pill checking" id="apiStatus">Test…</span>
     </div>
     <div class="api-col">
-      <input type="text" id="apiInput" placeholder="http://localhost:3000" spellcheck="false" aria-label="URL du serveur backend">
+      <input type="text" id="apiInput" placeholder="https://site-crea.onrender.com" spellcheck="false" aria-label="URL du serveur backend">
       <button type="button" id="testApiBtn">Tester la connexion</button>
     </div>
     <small>Le serveur tourne en local sur le port 3000 (Docker) ou sur votre instance Render.</small>
@@ -734,7 +734,7 @@ small{color:var(--ink);opacity:.7;font-size:12px;margin-top:8px;display:block}
   'use strict';
 
   // === CONSTANTES & CLÉS LOCALSTORAGE ===
-  const DEFAULT_API = 'http://localhost:3000';
+  const DEFAULT_API = 'https://site-crea.onrender.com';
   const STORAGE_API_KEY = 'crea_api_url';
   const STORAGE_HIST_KEY = 'crea_video_history';
   const MAX_HISTORY = 6;
