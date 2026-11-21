@@ -22,9 +22,10 @@ function isValidUrl(raw) {
 // Prépare les arguments communs pour yt-dlp (moteur JS Node + solver EJS + cookies Render/local)
 function getBaseYtDlpArgs() {
   const args = [
-    '--js-runtimes', 'node',
+    '--force-ipv4',
+    '--js-runtimes', 'deno,node',
     '--remote-components', 'ejs:github',
-    '--extractor-args', 'youtube:player_client=tv,web',
+    '--extractor-args', 'youtube:player_client=tv,mweb,web',
   ];
 
   const renderSecret = '/etc/secrets/cookies.txt';
